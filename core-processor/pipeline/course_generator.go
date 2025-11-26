@@ -29,6 +29,19 @@ func NewCourseGenerator() *CourseGenerator {
 func (cg *CourseGenerator) GenerateCourse(markdownPath, outputDir string, options models.ProcessingOptions) (*models.Course, error) {
 	fmt.Printf("Starting course generation from %s\n", markdownPath)
 
+	// Validate inputs
+	if markdownPath == "" {
+		return nil, fmt.Errorf("markdown path cannot be empty")
+	}
+	if outputDir == "" {
+		return nil, fmt.Errorf("output directory cannot be empty")
+	}
+
+	// Check if markdown file exists
+	if _, err := os.Stat(markdownPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("markdown file does not exist: %s", markdownPath)
+	}
+
 	// Read markdown content
 	content, err := readFile(markdownPath)
 	if err != nil {

@@ -69,9 +69,10 @@ type ProcessingOptions struct {
 
 // ParsedSection represents a parsed section from markdown
 type ParsedSection struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
-	Order   int    `json:"order"`
+	Title   string   `json:"title"`
+	Content string   `json:"content"`
+	Images  []string `json:"images,omitempty"`
+	Order   int      `json:"order"`
 }
 
 // ParsedCourse represents parsed course data from markdown

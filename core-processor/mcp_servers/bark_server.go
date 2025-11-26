@@ -27,6 +27,11 @@ func (s *BarkTTSServer) RegisterTools() {
 	s.AddTool("generate_tts", "Generate speech audio from text using Bark TTS", s.generateTTS)
 }
 
+// GenerateTTS generates TTS audio from text (public method for direct calls)
+func (s *BarkTTSServer) GenerateTTS(args map[string]interface{}) (interface{}, error) {
+	return s.generateTTS(args)
+}
+
 // generateTTS generates TTS audio from text
 func (s *BarkTTSServer) generateTTS(args map[string]interface{}) (interface{}, error) {
 	text, ok := args["text"].(string)

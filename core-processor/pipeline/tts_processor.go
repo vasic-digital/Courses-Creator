@@ -4,20 +4,21 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/course-creator/core-processor/mcp_servers"
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/utils"
 )
 
 // TTSProcessor handles text-to-speech generation
 type TTSProcessor struct {
-	// In real implementation, this would hold MCP client connections
-	// barkClient *mcp.Client
-	// speecht5Client *mcp.Client
+	barkServer *mcp_servers.BarkTTSServer
 }
 
 // NewTTSProcessor creates a new TTS processor
 func NewTTSProcessor() *TTSProcessor {
-	return &TTSProcessor{}
+	return &TTSProcessor{
+		barkServer: mcp_servers.NewBarkTTSServer(),
+	}
 }
 
 // GenerateAudio generates audio from text using configured TTS
@@ -51,28 +52,37 @@ func (tp *TTSProcessor) GenerateAudio(text string, options models.ProcessingOpti
 
 // generateBarkTTS generates TTS using Bark
 func (tp *TTSProcessor) generateBarkTTS(text string, options models.ProcessingOptions) (string, error) {
-	// Placeholder for MCP call to Bark server
-	// result := tp.barkClient.Call("generate_tts", map[string]interface{}{
-	//     "text": text,
-	//     "voice_preset": options.Voice,
-	// })
-
 	preview := text
 	if len(text) > 50 {
 		preview = text[:50]
 	}
 	fmt.Printf("Generating Bark TTS for: %s...\n", preview)
 
-	// Simulate processing
-	outputPath := filepath.Join("/tmp", fmt.Sprintf("bark_audio_%d.wav", utils.HashString(text)))
-
-	// In real implementation, write actual audio data
-	// For now, create placeholder file
-	if err := writePlaceholderFile(outputPath, "Bark audio data"); err != nil {
-		return "", err
+	// Call the MCP server directly
+	args := map[string]interface{}{
+		"text": text,
+	}
+	if options.Voice != nil {
+		args["voice_preset"] = *options.Voice
 	}
 
-	return outputPath, nil
+	result, err := tp.barkServer.GenerateTTS(args)
+	if err != nil {
+		return "", fmt.Errorf("Bark TTS failed: %w", err)
+	}
+
+	// Extract audio path from result
+	resultMap, ok := result.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid result from Bark TTS")
+	}
+
+	audioPath, ok := resultMap["audio_path"].(string)
+	if !ok {
+		return "", fmt.Errorf("audio_path not found in result")
+	}
+
+	return audioPath, nil
 }
 
 // generateSpeechT5TTS generates TTS using SpeechT5

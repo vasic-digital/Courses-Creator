@@ -71,6 +71,7 @@ func (p *MarkdownParser) extractSections(content string) []models.ParsedSection 
 			// Save previous section
 			if currentSection != nil {
 				currentSection.Content = strings.TrimSpace(strings.Join(currentContent, "\n"))
+				currentSection.Images = p.extractImages(strings.Join(currentContent, "\n"))
 				sections = append(sections, *currentSection)
 				order++
 			}
@@ -89,6 +90,7 @@ func (p *MarkdownParser) extractSections(content string) []models.ParsedSection 
 	// Add last section
 	if currentSection != nil {
 		currentSection.Content = strings.TrimSpace(strings.Join(currentContent, "\n"))
+		currentSection.Images = p.extractImages(strings.Join(currentContent, "\n"))
 		sections = append(sections, *currentSection)
 	}
 
@@ -123,4 +125,16 @@ func (p *MarkdownParser) extractMetadata(content string) map[string]interface{} 
 		"language": "en",
 		"tags":     []string{},
 	}
+}
+
+// extractImages extracts image URLs from content
+func (p *MarkdownParser) extractImages(content string) []string {
+	var images []string
+	matches := p.imagePattern.FindAllStringSubmatch(content, -1)
+	for _, match := range matches {
+		if len(match) > 2 {
+			images = append(images, match[2]) // URL is in second capture group
+		}
+	}
+	return images
 }
