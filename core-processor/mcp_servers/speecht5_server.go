@@ -15,53 +15,52 @@ import (
 	"github.com/course-creator/core-processor/utils"
 )
 
-// BarkTTSServer handles Bark text-to-speech generation
-type BarkTTSServer struct {
+// SpeechT5TTSServer handles SpeechT5 text-to-speech generation
+type SpeechT5TTSServer struct {
 	*BaseServerImpl
-	barkURL     string
-	modelPath   string
-	outputDir   string
-	maxLength   int
-	sampleRate  int
+	speechT5URL string
+	modelPath    string
+	outputDir    string
+	maxLength    int
+	sampleRate   int
 }
 
-// BarkRequest represents a Bark TTS generation request
-type BarkRequest struct {
-	Text       string            `json:"text"`
-	Voice      string            `json:"voice,omitempty"`
-	Speed      float64           `json:"speed,omitempty"`
-	Pitch      float64           `json:"pitch,omitempty"`
-	Generation int               `json:"generation,omitempty"`
-	Temperature float64          `json:"temperature,omitempty"`
+// SpeechT5Request represents a SpeechT5 TTS generation request
+type SpeechT5Request struct {
+	Text       string                 `json:"text"`
+	Voice      string                 `json:"voice,omitempty"`
+	Speed      float64                `json:"speed,omitempty"`
+	Pitch      float64                `json:"pitch,omitempty"`
+	SampleRate int                    `json:"sample_rate,omitempty"`
 	Settings   map[string]interface{} `json:"settings,omitempty"`
 }
 
-// BarkResponse represents a Bark TTS generation response
-type BarkResponse struct {
-	Success   bool   `json:"success"`
-	AudioPath string `json:"audio_path,omitempty"`
-	Duration  float64 `json:"duration,omitempty"`
-	SampleRate int   `json:"sample_rate,omitempty"`
-	Error     string `json:"error,omitempty"`
+// SpeechT5Response represents a SpeechT5 TTS generation response
+type SpeechT5Response struct {
+	Success    bool   `json:"success"`
+	AudioPath  string `json:"audio_path,omitempty"`
+	Duration   float64 `json:"duration,omitempty"`
+	SampleRate int    `json:"sample_rate,omitempty"`
+	Error      string `json:"error,omitempty"`
 }
 
-// NewBarkTTSServer creates a new Bark TTS server
-func NewBarkTTSServer() *BarkTTSServer {
+// NewSpeechT5Server creates a new SpeechT5 TTS server
+func NewSpeechT5Server() *SpeechT5TTSServer {
 	config := MCPServerConfig{
-		Name:       "bark-tts",
+		Name:       "speecht5-tts",
 		Version:    "1.0.0",
 		Transport:  "stdio",
 		Timeout:    60 * time.Second,
 		MaxRetries: 3,
 	}
 	
-	server := &BarkTTSServer{
+	server := &SpeechT5TTSServer{
 		BaseServerImpl: NewBaseServer(config),
-		barkURL:       "http://localhost:8081/generate", // Default Bark server URL
-		modelPath:     "/models/bark",
-		outputDir:     "/tmp/bark_output",
-		maxLength:    200, // Maximum text length per generation
-		sampleRate:    24000,
+		speechT5URL:    "http://localhost:8082/generate", // Default SpeechT5 server URL
+		modelPath:      "/models/speecht5",
+		outputDir:      "/tmp/speecht5_output",
+		maxLength:      300, // Maximum text length per generation
+		sampleRate:     16000,
 	}
 	
 	// Ensure output directory exists
@@ -71,23 +70,23 @@ func NewBarkTTSServer() *BarkTTSServer {
 	return server
 }
 
-// NewBarkTTSServerWithConfig creates a new Bark TTS server with custom config
-func NewBarkTTSServerWithConfig(barkURL, modelPath, outputDir string, maxLength, sampleRate int) *BarkTTSServer {
+// NewSpeechT5ServerWithConfig creates a new SpeechT5 TTS server with custom config
+func NewSpeechT5ServerWithConfig(speechT5URL, modelPath, outputDir string, maxLength, sampleRate int) *SpeechT5TTSServer {
 	config := MCPServerConfig{
-		Name:       "bark-tts",
+		Name:       "speecht5-tts",
 		Version:    "1.0.0",
 		Transport:  "stdio",
 		Timeout:    60 * time.Second,
 		MaxRetries: 3,
 	}
 	
-	server := &BarkTTSServer{
+	server := &SpeechT5TTSServer{
 		BaseServerImpl: NewBaseServer(config),
-		barkURL:       barkURL,
-		modelPath:     modelPath,
-		outputDir:     outputDir,
-		maxLength:    maxLength,
-		sampleRate:    sampleRate,
+		speechT5URL:    speechT5URL,
+		modelPath:      modelPath,
+		outputDir:      outputDir,
+		maxLength:      maxLength,
+		sampleRate:     sampleRate,
 	}
 	
 	// Ensure output directory exists
@@ -98,19 +97,19 @@ func NewBarkTTSServerWithConfig(barkURL, modelPath, outputDir string, maxLength,
 }
 
 // RegisterTools registers the TTS generation tool
-func (s *BarkTTSServer) RegisterTools() {
-	s.AddTool("generate_tts", "Generate speech audio from text using Bark TTS", s.generateTTS)
-	s.AddTool("list_voices", "List available Bark voices", s.listVoices)
-	s.AddTool("get_info", "Get Bark TTS server information", s.getInfo)
+func (s *SpeechT5TTSServer) RegisterTools() {
+	s.AddTool("generate_tts", "Generate speech audio from text using SpeechT5 TTS", s.generateTTS)
+	s.AddTool("list_voices", "List available SpeechT5 voices", s.listVoices)
+	s.AddTool("get_info", "Get SpeechT5 TTS server information", s.getInfo)
 }
 
 // GenerateTTS generates TTS audio from text (public method for direct calls)
-func (s *BarkTTSServer) GenerateTTS(args map[string]interface{}) (interface{}, error) {
+func (s *SpeechT5TTSServer) GenerateTTS(args map[string]interface{}) (interface{}, error) {
 	return s.generateTTS(args)
 }
 
 // generateTTS generates TTS audio from text
-func (s *BarkTTSServer) generateTTS(args map[string]interface{}) (interface{}, error) {
+func (s *SpeechT5TTSServer) generateTTS(args map[string]interface{}) (interface{}, error) {
 	text, ok := args["text"].(string)
 	if !ok || text == "" {
 		return nil, fmt.Errorf("text parameter is required and must be a non-empty string")
@@ -118,7 +117,7 @@ func (s *BarkTTSServer) generateTTS(args map[string]interface{}) (interface{}, e
 
 	voicePreset, _ := args["voice_preset"].(string)
 	if voicePreset == "" {
-		voicePreset = "v2/en_speaker_6" // Default voice
+		voicePreset = "default" // Default voice
 	}
 
 	speed, _ := args["speed"].(float64)
@@ -131,21 +130,16 @@ func (s *BarkTTSServer) generateTTS(args map[string]interface{}) (interface{}, e
 		pitch = 1.0 // Default pitch
 	}
 
-	temperature, _ := args["temperature"].(float64)
-	if temperature == 0 {
-		temperature = 0.7 // Default temperature
-	}
-
-	generation, _ := args["generation"].(int)
-	if generation == 0 {
-		generation = 1 // Default generation
+	sampleRate, _ := args["sample_rate"].(int)
+	if sampleRate == 0 {
+		sampleRate = s.sampleRate
 	}
 
 	preview := text
 	if len(text) > 50 {
 		preview = text[:50] + "..."
 	}
-	fmt.Printf("Generating TTS for: %s (voice: %s)\n", preview, voicePreset)
+	fmt.Printf("Generating SpeechT5 TTS for: %s (voice: %s)\n", preview, voicePreset)
 
 	// Split text into chunks if too long
 	chunks := s.splitText(text)
@@ -155,7 +149,7 @@ func (s *BarkTTSServer) generateTTS(args map[string]interface{}) (interface{}, e
 		chunkID := fmt.Sprintf("%d_%d", utils.HashString(text), i)
 		
 		// Generate audio for each chunk
-		audioPath, err := s.generateAudioChunk(chunk, voicePreset, speed, pitch, temperature, generation, chunkID)
+		audioPath, err := s.generateAudioChunk(chunk, voicePreset, speed, pitch, sampleRate, chunkID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate audio for chunk %d: %w", i, err)
 		}
@@ -180,40 +174,38 @@ func (s *BarkTTSServer) generateTTS(args map[string]interface{}) (interface{}, e
 		"speed":      speed,
 		"pitch":      pitch,
 		"chunks":     len(chunks),
-		"sample_rate": s.sampleRate,
+		"sample_rate": sampleRate,
 	}, nil
 }
 
 // generateAudioChunk generates audio for a single text chunk
-func (s *BarkTTSServer) generateAudioChunk(text, voice string, speed, pitch, temperature float64, generation int, chunkID string) (string, error) {
-	request := BarkRequest{
+func (s *SpeechT5TTSServer) generateAudioChunk(text, voice string, speed, pitch float64, sampleRate int, chunkID string) (string, error) {
+	request := SpeechT5Request{
 		Text:       text,
 		Voice:      voice,
 		Speed:      speed,
 		Pitch:      pitch,
-		Temperature: temperature,
-		Generation: generation,
+		SampleRate: sampleRate,
 		Settings: map[string]interface{}{
-			"sample_rate": s.sampleRate,
-			"model_path":  s.modelPath,
+			"model_path": s.modelPath,
 		},
 	}
 
-	// Check if local Bark server is available
-	if s.isBarkServerRunning() {
-		return s.callBarkServer(request, chunkID)
+	// Check if local SpeechT5 server is available
+	if s.isSpeechT5ServerRunning() {
+		return s.callSpeechT5Server(request, chunkID)
 	}
 
 	// Fallback to Python implementation
-	return s.callBarkPython(request, chunkID)
+	return s.callSpeechT5Python(request, chunkID)
 }
 
-// isBarkServerRunning checks if Bark server is available
-func (s *BarkTTSServer) isBarkServerRunning() bool {
+// isSpeechT5ServerRunning checks if SpeechT5 server is available
+func (s *SpeechT5TTSServer) isSpeechT5ServerRunning() bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", s.barkURL+"/health", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", s.speechT5URL+"/health", nil)
 	if err != nil {
 		return false
 	}
@@ -227,8 +219,8 @@ func (s *BarkTTSServer) isBarkServerRunning() bool {
 	return resp.StatusCode == 200
 }
 
-// callBarkServer calls the local Bark server
-func (s *BarkTTSServer) callBarkServer(request BarkRequest, chunkID string) (string, error) {
+// callSpeechT5Server calls the local SpeechT5 server
+func (s *SpeechT5TTSServer) callSpeechT5Server(request SpeechT5Request, chunkID string) (string, error) {
 	jsonData, err := json.Marshal(request)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal request: %w", err)
@@ -237,7 +229,7 @@ func (s *BarkTTSServer) callBarkServer(request BarkRequest, chunkID string) (str
 	ctx, cancel := context.WithTimeout(context.Background(), s.Config.Timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "POST", s.barkURL, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", s.speechT5URL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
@@ -245,7 +237,7 @@ func (s *BarkTTSServer) callBarkServer(request BarkRequest, chunkID string) (str
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to call Bark server: %w", err)
+		return "", fmt.Errorf("failed to call SpeechT5 server: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -254,64 +246,78 @@ func (s *BarkTTSServer) callBarkServer(request BarkRequest, chunkID string) (str
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
 
-	var response BarkResponse
+	var response SpeechT5Response
 	if err := json.Unmarshal(body, &response); err != nil {
 		return "", fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	if !response.Success {
-		return "", fmt.Errorf("Bark generation failed: %s", response.Error)
+		return "", fmt.Errorf("SpeechT5 generation failed: %s", response.Error)
 	}
 
 	return response.AudioPath, nil
 }
 
-// callBarkPython calls Bark Python implementation
-func (s *BarkTTSServer) callBarkPython(request BarkRequest, chunkID string) (string, error) {
-	// Generate Python script for Bark
+// callSpeechT5Python calls SpeechT5 Python implementation
+func (s *SpeechT5TTSServer) callSpeechT5Python(request SpeechT5Request, chunkID string) (string, error) {
+	// Generate Python script for SpeechT5
 	pythonScript := fmt.Sprintf(`
 import os
 import sys
 sys.path.append('%s')
 
-from bark import SAMPLE_RATE, generate_audio, preload_models
-from scipy.io.wavfile import write as write_wav
+import torch
 import numpy as np
+from transformers import SpeechT5Processor, SpeechT5ForTextToSpeech, SpeechT5HifiGan
+from datasets import load_dataset
+import soundfile as sf
 
 # Load models
-preload_models()
+processor = SpeechT5Processor.from_pretrained("microsoft/speecht5_tts")
+model = SpeechT5ForTextToSpeech.from_pretrained("microsoft/speecht5_tts")
+vocoder = SpeechT5HifiGan.from_pretrained("microsoft/speecht5_hifigan")
 
-# Generate audio
-audio_array = generate_audio(
-    "%s",
-    history_prompt="%s",
-    temperature=%f,
-    generation=%d
-)
+# Load speaker embeddings
+embeddings_dataset = load_dataset("Matthijs/cmu-arctic-xvectors", split="validation")
+speaker_embeddings = torch.tensor(embeddings_dataset[%d]["xvector"]).unsqueeze(0)
+
+# Prepare input
+inputs = processor(text="%s", return_tensors="pt")
+
+# Generate speech
+speech = model.generate_speech(inputs["input_ids"], speaker_embeddings=speaker_embeddings, vocoder=vocoder)
 
 # Apply speed and pitch adjustments
 if %f != 1.0:
-    audio_array = np.interp(
-        np.linspace(0, 1, int(len(audio_array) / %f)),
-        np.linspace(0, 1, len(audio_array)),
-        audio_array
-    )
+    # Simple speed adjustment using resampling
+    import librosa
+    speech = speech.squeeze().numpy()
+    speech = librosa.effects.time_stretch(speech, rate=%f)
+    speech = torch.tensor(speech).unsqueeze(0)
+
+if %f != 1.0:
+    # Simple pitch adjustment
+    speech = speech.squeeze().numpy()
+    speech = librosa.effects.pitch_shift(speech, sr=%d, n_steps=%f)
+    speech = torch.tensor(speech).unsqueeze(0)
 
 # Save to file
 output_path = "%s/%s.wav"
-write_wav(output_path, SAMPLE_RATE, audio_array)
+sf.write(output_path, speech.squeeze().numpy(), %d)
 
 print(output_path)
 `,
 		s.modelPath,
+		0, # Default speaker embedding
 		request.Text,
-		request.Voice,
-		request.Temperature,
-		request.Generation,
 		request.Speed,
 		request.Speed,
+		request.Pitch,
+		request.SampleRate,
+		request.Pitch,
 		s.outputDir,
 		chunkID,
+		request.SampleRate,
 	)
 
 	// Write script to temporary file
@@ -346,7 +352,7 @@ print(output_path)
 }
 
 // splitText splits text into chunks of maximum length
-func (s *BarkTTSServer) splitText(text string) []string {
+func (s *SpeechT5TTSServer) splitText(text string) []string {
 	if len(text) <= s.maxLength {
 		return []string{text}
 	}
@@ -388,7 +394,7 @@ func (s *BarkTTSServer) splitText(text string) []string {
 }
 
 // combineAudioFiles combines multiple audio files into one
-func (s *BarkTTSServer) combineAudioFiles(audioFiles []string, originalText string) (string, error) {
+func (s *SpeechT5TTSServer) combineAudioFiles(audioFiles []string, originalText string) (string, error) {
 	// For now, just return the first file
 	// In a real implementation, this would use FFmpeg or similar to concatenate audio
 	combinedPath := filepath.Join(s.outputDir, fmt.Sprintf("combined_%d.wav", utils.HashString(originalText)))
@@ -411,78 +417,43 @@ func (s *BarkTTSServer) combineAudioFiles(audioFiles []string, originalText stri
 	return combinedPath, nil
 }
 
-// listVoices lists available Bark voices
-func (s *BarkTTSServer) listVoices(args map[string]interface{}) (interface{}, error) {
+// listVoices lists available SpeechT5 voices
+func (s *SpeechT5TTSServer) listVoices(args map[string]interface{}) (interface{}, error) {
 	voices := []map[string]interface{}{
 		{
-			"id":          "v2/en_speaker_0",
-			"name":        "English Speaker 0",
+			"id":          "default",
+			"name":        "Default Voice",
 			"language":    "en",
 			"gender":      "neutral",
-			"description": "Standard English voice",
+			"description": "Default SpeechT5 voice",
 		},
 		{
-			"id":          "v2/en_speaker_1",
-			"name":        "English Speaker 1",
+			"id":          "cmu_us_bdl_arctic",
+			"name":        "BDL Male Voice",
 			"language":    "en",
 			"gender":      "male",
-			"description": "Male English voice",
+			"description": "CMU Arctic BDL male voice",
 		},
 		{
-			"id":          "v2/en_speaker_2",
-			"name":        "English Speaker 2",
+			"id":          "cmu_us_slt_arctic",
+			"name":        "SLT Female Voice",
 			"language":    "en",
 			"gender":      "female",
-			"description": "Female English voice",
+			"description": "CMU Arctic SLT female voice",
 		},
 		{
-			"id":          "v2/en_speaker_3",
-			"name":        "English Speaker 3",
+			"id":          "cmu_us_clb_arctic",
+			"name":        "CLB Female Voice",
+			"language":    "en",
+			"gender":      "female",
+			"description": "CMU Arctic CLB female voice",
+		},
+		{
+			"id":          "cmu_us_rms_arctic",
+			"name":        "RMS Male Voice",
 			"language":    "en",
 			"gender":      "male",
-			"description": "Deep male English voice",
-		},
-		{
-			"id":          "v2/en_speaker_4",
-			"name":        "English Speaker 4",
-			"language":    "en",
-			"gender":      "female",
-			"description": "Soft female English voice",
-		},
-		{
-			"id":          "v2/en_speaker_5",
-			"name":        "English Speaker 5",
-			"language":    "en",
-			"gender":      "male",
-			"description": "Bright male English voice",
-		},
-		{
-			"id":          "v2/en_speaker_6",
-			"name":        "English Speaker 6",
-			"language":    "en",
-			"gender":      "female",
-			"description": "Warm female English voice",
-		},
-		{
-			"id":          "v2/en_speaker_7",
-			"name":        "English Speaker 7",
-			"language":    "en",
-			"gender":      "neutral",
-			"description": "Neutral English voice",
-		},
-		{
-			"id":          "v2/en_speaker_8",
-			"name":        "English Speaker 8",
-			"language":    "en",
-			"gender":      "male",
-			"description": "Clear male English voice",
-		},
-		{
-			"id":          "v2/en_speaker_9",
-			"name":        "English Speaker 9",
-			"language":    "en",
-			"gender":      "female",
-			"description": "Expressive female English voice",
+			"description": "CMU Arctic RMS male voice",
 		},
 	}
 
@@ -492,16 +463,16 @@ func (s *BarkTTSServer) listVoices(args map[string]interface{}) (interface{}, er
 	}, nil
 }
 
-// getInfo returns Bark TTS server information
-func (s *BarkTTSServer) getInfo(args map[string]interface{}) (interface{}, error) {
+// getInfo returns SpeechT5 TTS server information
+func (s *SpeechT5TTSServer) getInfo(args map[string]interface{}) (interface{}, error) {
 	return map[string]interface{}{
-		"name":        "Bark TTS Server",
+		"name":        "SpeechT5 TTS Server",
 		"version":     "1.0.0",
-		"server_url":  s.barkURL,
-		"model_path":  s.modelPath,
+		"server_url": s.speechT5URL,
+		"model_path": s.modelPath,
 		"sample_rate": s.sampleRate,
-		"max_length":  s.maxLength,
-		"output_dir":  s.outputDir,
-		"server_running": s.isBarkServerRunning(),
+		"max_length": s.maxLength,
+		"output_dir": s.outputDir,
+		"server_running": s.isSpeechT5ServerRunning(),
 	}, nil
 }
