@@ -3,8 +3,7 @@ package pipeline
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"os/exec"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -214,8 +213,6 @@ func (va *VideoAssembler) generateGradientBackground(ctx context.Context, output
 
 	// Choose gradient based on text hash
 	gradientIndex := int(utils.HashString(textContent)) % len(gradientColors)
-	colors := gradientColors[gradientIndex]
-
 	// Create gradient filter
 	filter := fmt.Sprintf("color=red:s=%dx%d[d1];color=blue:s=%dx%d[d2];[d1][d2]scale2ref[d2][d1];[d2][d1]blend=all_mode=multiply",
 		va.config.Quality.Width, va.config.Quality.Height,
@@ -381,7 +378,7 @@ func (va *VideoAssembler) createTextOverlayFilter(segments []TextSegment, option
 	// Create background input
 	filterParts = append(filterParts, "[0:v]base")
 
-	for i, segment := range segments {
+	for _, segment := range segments {
 		// Escape special characters in text
 		escapedText := va.escapeFFmpegText(segment.Text)
 		
@@ -492,13 +489,14 @@ func (va *VideoAssembler) createSRTSubtitleFile(path string, subtitles []models.
 	var content strings.Builder
 	
 	for _, subtitle := range subtitles {
-		for i, timestamp := range subtitle.Timestamps {
-			startTime := va.formatSRTTime(timestamp.Start)
-			endTime := va.formatSRTTime(timestamp.End)
+		for i, timestampData := range subtitle.Timestamps {
+			timestampMap := timestampData.(map[string]interface{})
+			startTime := va.formatSRTTime(timestampMap["start"].(float64))
+			endTime := va.formatSRTTime(timestampMap["end"].(float64))
 			
 			content.WriteString(fmt.Sprintf("%d\n", i+1))
 			content.WriteString(fmt.Sprintf("%s --> %s\n", startTime, endTime))
-			content.WriteString(fmt.Sprintf("%s\n\n", timestamp.Text))
+			content.WriteString(fmt.Sprintf("%s\n\n", timestampMap["text"].(string)))
 		}
 	}
 

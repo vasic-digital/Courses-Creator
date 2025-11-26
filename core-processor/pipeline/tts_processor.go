@@ -41,7 +41,6 @@ type TTSConfig struct {
 type TTSProcessor struct {
 	config        TTSConfig
 	barkServer    *mcp_servers.BarkTTSServer
-	speechT5Server *mcp_servers.SpeechT5Server
 	mu            sync.RWMutex
 	running       bool
 }
@@ -75,7 +74,6 @@ func NewTTSProcessor() *TTSProcessor {
 	return &TTSProcessor{
 		config:         config,
 		barkServer:     mcp_servers.NewBarkTTSServer(),
-		speechT5Server: mcp_servers.NewSpeechT5Server(),
 		running:        true,
 	}
 }
@@ -88,7 +86,6 @@ func NewTTSProcessorWithConfig(config TTSConfig) *TTSProcessor {
 	return &TTSProcessor{
 		config:         config,
 		barkServer:     mcp_servers.NewBarkTTSServer(),
-		speechT5Server: mcp_servers.NewSpeechT5Server(),
 		running:        true,
 	}
 }
@@ -297,10 +294,10 @@ func (tp *TTSProcessor) generateSpeechT5TTS(ctx context.Context, text string, op
 		args["bitrate"] = 128000
 	}
 
-	// Call SpeechT5 server
-	result, err := tp.speechT5Server.GenerateTTS(args)
+	// Call Bark server (using Bark as fallback since SpeechT5 server was removed)
+	result, err := tp.barkServer.GenerateTTS(args)
 	if err != nil {
-		return "", fmt.Errorf("SpeechT5 TTS failed: %w", err)
+		return "", fmt.Errorf("Bark TTS failed: %w", err)
 	}
 
 	// Extract audio path from result
