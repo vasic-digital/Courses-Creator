@@ -42,16 +42,10 @@ class Lesson:
     content: str
     video_url: Optional[str] = None
     audio_url: Optional[str] = None
-    subtitles: List[Subtitle] = None
-    interactive_elements: List[InteractiveElement] = None
+    subtitles: List[Subtitle] = field(default_factory=list)
+    interactive_elements: List[InteractiveElement] = field(default_factory=list)
     duration: int = 0
     order: int = 0
-
-    def __post_init__(self):
-        if self.subtitles is None:
-            self.subtitles = []
-        if self.interactive_elements is None:
-            self.interactive_elements = []
 
 
 @dataclass
@@ -71,12 +65,8 @@ class ProcessingOptions:
     """Options for course processing."""
     voice: Optional[str] = None
     background_music: bool = True
-    languages: List[str] = None
+    languages: List[str] = field(default_factory=lambda: ["en"])
     quality: str = "standard"  # 'standard' or 'high'
-
-    def __post_init__(self):
-        if self.languages is None:
-            self.languages = ["en"]
 
 
 @dataclass
