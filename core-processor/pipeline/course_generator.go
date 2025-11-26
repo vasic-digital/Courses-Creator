@@ -1,10 +1,12 @@
 package pipeline
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/course-creator/core-processor/llm"
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/utils"
 )
@@ -22,12 +24,14 @@ func NewCourseGenerator() *CourseGenerator {
 		markdownParser: utils.NewMarkdownParser(),
 		ttsProcessor:   NewTTSProcessor(),
 		videoAssembler: NewVideoAssembler(),
+		contentGen:     llm.NewCourseContentGenerator(),
 	}
 }
 
 // GenerateCourse generates a complete video course from markdown
 func (cg *CourseGenerator) GenerateCourse(markdownPath, outputDir string, options models.ProcessingOptions) (*models.Course, error) {
 	fmt.Printf("Starting course generation from %s\n", markdownPath)
+	ctx := context.Background()
 
 	// Validate inputs
 	if markdownPath == "" {
@@ -54,22 +58,48 @@ func (cg *CourseGenerator) GenerateCourse(markdownPath, outputDir string, option
 		return nil, fmt.Errorf("failed to parse markdown: %w", err)
 	}
 
+	// Generate enhanced course title and description using LLM
+	title := parsedCourse.Title
+	if title == "" {
+		title, err = cg.contentGen.GenerateCourseTitle(ctx, content)
+		if err != nil {
+			fmt.Printf("Failed to generate title, using fallback: %v\n", err)
+			title = "Untitled Course"
+		}
+	}
+
+	description := parsedCourse.Description
+	if description == "" {
+		description, err = cg.contentGen.GenerateCourseDescription(ctx, title, content)
+		if err != nil {
+			fmt.Printf("Failed to generate description, using fallback: %v\n", err)
+			description = "A comprehensive course on " + title
+		}
+	}
+
+	// Generate metadata
+	metadata, err := cg.contentGen.GenerateMetadata(ctx, title, description)
+	if err != nil {
+		fmt.Printf("Failed to generate enhanced metadata, using defaults: %v\n", err)
+		metadata = map[string]interface{}{}
+	}
+
 	// Create course object
 	course := &models.Course{
-		ID:          fmt.Sprintf("course_%s", filepath.Base(markdownPath)),
-		Title:       parsedCourse.Title,
-		Description: parsedCourse.Description,
+		ID:          fmt.Sprintf("course_%d", utils.HashString(content)),
+		Title:       title,
+		Description: description,
 		Metadata: models.CourseMetadata{
-			Author:   getStringFromMap(parsedCourse.Metadata, "author", "Unknown"),
-			Language: getStringFromMap(parsedCourse.Metadata, "language", "en"),
-			Tags:     getStringSliceFromMap(parsedCourse.Metadata, "tags", []string{}),
+			Author:   getStringFromMap(metadata, "author", getStringFromMap(parsedCourse.Metadata, "author", "Unknown")),
+			Language: getStringFromMap(metadata, "language", getStringFromMap(parsedCourse.Metadata, "language", "en")),
+			Tags:     getStringSliceFromMap(metadata, "tags", getStringSliceFromMap(parsedCourse.Metadata, "tags", []string{})),
 		},
 	}
 
-	// Generate lessons
+	// Generate lessons with enhanced content
 	var lessons []models.Lesson
 	for _, section := range parsedCourse.Sections {
-		lesson, err := cg.generateLesson(section, outputDir, options)
+		lesson, err := cg.generateLesson(ctx, section, outputDir, options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate lesson %s: %w", section.Title, err)
 		}
@@ -88,28 +118,43 @@ func (cg *CourseGenerator) GenerateCourse(markdownPath, outputDir string, option
 }
 
 // generateLesson generates a single lesson from section data
-func (cg *CourseGenerator) generateLesson(section models.ParsedSection, outputDir string, options models.ProcessingOptions) (*models.Lesson, error) {
+func (cg *CourseGenerator) generateLesson(ctx context.Context, section models.ParsedSection, outputDir string, options models.ProcessingOptions) (*models.Lesson, error) {
 	fmt.Printf("Generating lesson: %s\n", section.Title)
 
+	// Enhance lesson content using LLM
+	enhancedContent, err := cg.contentGen.GenerateLessonContent(ctx, section.Title, section.Content)
+	if err != nil {
+		fmt.Printf("Failed to enhance lesson content, using original: %v\n", err)
+		enhancedContent = section.Content
+	}
+
+	// Generate interactive elements
+	interactiveElements, err := cg.contentGen.GenerateInteractiveElements(ctx, enhancedContent)
+	if err != nil {
+		fmt.Printf("Failed to generate interactive elements: %v\n", err)
+		interactiveElements = []string{}
+	}
+
 	// Generate TTS audio
-	audioPath, err := cg.ttsProcessor.GenerateAudio(section.Content, options)
+	audioPath, err := cg.ttsProcessor.GenerateAudio(enhancedContent, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate audio: %w", err)
 	}
 
 	// Create video
-	videoPath, err := cg.videoAssembler.CreateVideo(audioPath, section.Content, outputDir, options)
+	videoPath, err := cg.videoAssembler.CreateVideo(audioPath, enhancedContent, outputDir, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create video: %w", err)
 	}
 
 	lesson := &models.Lesson{
-		ID:       fmt.Sprintf("lesson_%d", utils.HashString(section.Content)),
-		Title:    section.Title,
-		Content:  section.Content,
-		VideoURL: &videoPath,
-		AudioURL: &audioPath,
-		Order:    section.Order,
+		ID:                  fmt.Sprintf("lesson_%d", utils.HashString(section.Content)),
+		Title:               section.Title,
+		Content:             enhancedContent,
+		VideoURL:            &videoPath,
+		AudioURL:            &audioPath,
+		InteractiveElements:  parseInteractiveElements(interactiveElements),
+		Order:               section.Order,
 	}
 
 	return lesson, nil
@@ -151,6 +196,30 @@ func getStringSliceFromMap(m map[string]interface{}, key string, defaultValue []
 		if slice, ok := val.([]string); ok {
 			return slice
 		}
+		if slice, ok := val.([]interface{}); ok {
+			var result []string
+			for _, item := range slice {
+				if str, ok := item.(string); ok {
+					result = append(result, str)
+				}
+			}
+			return result
+		}
 	}
 	return defaultValue
+}
+
+// parseInteractiveElements converts interactive element JSON strings to model objects
+func parseInteractiveElements(elements []string) []models.InteractiveElement {
+	var result []models.InteractiveElement
+	for i, elementStr := range elements {
+		// Simple parsing for now - in real implementation, parse JSON properly
+		result = append(result, models.InteractiveElement{
+			ID:       fmt.Sprintf("ie_%d", i),
+			Type:     "quiz",
+			Content:  elementStr,
+			Position: i * 60, // Every 60 seconds
+		})
+	}
+	return result
 }

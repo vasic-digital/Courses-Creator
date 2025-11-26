@@ -170,14 +170,18 @@ func NewFreeProvider(name, apiEndpoint, apiKey string) *FreeProvider {
 
 // GenerateText generates text using the free provider
 func (p *FreeProvider) GenerateText(ctx context.Context, prompt string, options models.ProcessingOptions) (string, error) {
-	// Placeholder implementation
-	// In real implementation, make API call to free service
-	fmt.Printf("Generating text with free provider %s\n", p.name)
+	// Try to use local models first (Ollama)
+	if ollama := NewOllamaProvider("", ""); ollama.IsAvailable() {
+		return ollama.GenerateText(ctx, prompt, options)
+	}
+	
+	// Fallback to placeholder response
+	fmt.Printf("Generating text with free provider %s (placeholder)\n", p.name)
 
 	// Simulate API call
 	select {
 	case <-time.After(100 * time.Millisecond):
-		return fmt.Sprintf("Generated text from %s: %s", p.name, prompt[:50]), nil
+		return fmt.Sprintf("Generated text from %s: %s", p.name, prompt[:min(50, len(prompt))]), nil
 	case <-ctx.Done():
 		return "", ctx.Err()
 	}
@@ -226,4 +230,12 @@ func (p *PaidProvider) GetCostEstimate(textLength int) float64 {
 	// Rough estimate: assume 4 chars per token
 	tokens := textLength / 4
 	return float64(tokens) * p.costPerToken
+}
+
+// min helper function
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
