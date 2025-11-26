@@ -9,6 +9,14 @@ import (
 	"github.com/course-creator/core-processor/models"
 )
 
+// minString returns the first n characters of s, or the whole string if it's shorter
+func minString(s string, n int) string {
+	if len(s) < n {
+		return s
+	}
+	return s[:n]
+}
+
 // CourseContentGenerator generates course content using LLM providers
 type CourseContentGenerator struct {
 	providerManager *ProviderManager
@@ -72,7 +80,7 @@ The title should be:
 Content:
 %s
 
-Return only the title, nothing else.`, content[:1000]) // Limit content to avoid token limits
+Return only the title, nothing else.`, minString(content, 1000)) // Limit content to avoid token limits
 
 	preferences := ProviderPreferences{
 		AllowPaid:         true,
@@ -106,7 +114,7 @@ Requirements:
 Content:
 %s
 
-Return only the description, nothing else.`, title, content[:2000])
+Return only the description, nothing else.`, title, minString(content, 2000))
 
 	preferences := ProviderPreferences{
 		AllowPaid:         true,
@@ -178,7 +186,7 @@ Format your response as a JSON array of objects, each with:
 - "content": Detailed instructions or questions
 - "answer": For quizzes (optional)
 
-Return only valid JSON, nothing else.`, lessonContent[:3000])
+Return only valid JSON, nothing else.`, minString(lessonContent, 3000))
 
 	preferences := ProviderPreferences{
 		AllowPaid:         true,

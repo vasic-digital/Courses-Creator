@@ -40,7 +40,7 @@ func main() {
 	}
 	
 	reqBody, _ := json.Marshal(generateReq)
-	resp, err = http.Post(baseURL+"/courses/generate", "application/json", bytes.NewBuffer(reqBody))
+	resp, err = http.Post(baseURL+"/api/v1/courses/generate", "application/json", bytes.NewBuffer(reqBody))
 	if err != nil {
 		fmt.Printf("Course generation failed: %v\n", err)
 		return
@@ -60,7 +60,7 @@ func main() {
 		fmt.Println("\nWaiting for job completion...")
 		for i := 0; i < 10; i++ {
 			time.Sleep(2 * time.Second)
-			resp, err := http.Get(baseURL + "/jobs/" + jobID)
+			resp, err := http.Get(baseURL + "/api/v1/jobs/" + jobID)
 			if err != nil {
 				fmt.Printf("Job status check failed: %v\n", err)
 				continue
@@ -92,7 +92,7 @@ func main() {
 	
 	// Test courses list
 	fmt.Println("\nTesting courses list...")
-	resp, err = http.Get(baseURL + "/courses")
+	resp, err = http.Get(baseURL + "/api/v1/courses")
 	if err != nil {
 		fmt.Printf("Courses list failed: %v\n", err)
 		return

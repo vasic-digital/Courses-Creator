@@ -7,6 +7,7 @@ import (
 
 	"github.com/course-creator/core-processor/llm"
 	"github.com/course-creator/core-processor/models"
+	"github.com/course-creator/core-processor/storage"
 	"github.com/course-creator/core-processor/utils"
 )
 
@@ -16,15 +17,28 @@ type CourseGenerator struct {
 	ttsProcessor   *TTSProcessor
 	videoAssembler *VideoAssembler
 	contentGen     *llm.CourseContentGenerator
+	storage        *storage.StorageManager
 }
 
 // NewCourseGenerator creates a new course generator
 func NewCourseGenerator() *CourseGenerator {
+	// Create storage manager with default local storage
+	storageConfigs := map[string]storage.StorageConfig{
+		"default": storage.DefaultStorageConfig(),
+	}
+	
+	storageManager, err := storage.NewStorageManager(storageConfigs)
+	if err != nil {
+		// Fallback to empty storage manager if creation fails
+		storageManager = &storage.StorageManager{}
+	}
+	
 	return &CourseGenerator{
 		markdownParser: utils.NewMarkdownParser(),
 		ttsProcessor:   NewTTSProcessor(),
-		videoAssembler: NewVideoAssembler(),
+		videoAssembler: NewVideoAssembler(storageManager.DefaultProvider()),
 		contentGen:     llm.NewCourseContentGenerator(),
+		storage:        storageManager,
 	}
 }
 
@@ -99,7 +113,7 @@ func (cg *CourseGenerator) GenerateCourse(markdownPath, outputDir string, option
 	// Generate lessons with enhanced content
 	var lessons []models.Lesson
 	for _, section := range parsedCourse.Sections {
-		lesson, err := cg.generateLesson(ctx, section, outputDir, options)
+		lesson, err := cg.generateLesson(ctx, section, outputDir, options, content)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate lesson %s: %w", section.Title, err)
 		}
@@ -118,7 +132,7 @@ func (cg *CourseGenerator) GenerateCourse(markdownPath, outputDir string, option
 }
 
 // generateLesson generates a single lesson from section data
-func (cg *CourseGenerator) generateLesson(ctx context.Context, section models.ParsedSection, outputDir string, options models.ProcessingOptions) (*models.Lesson, error) {
+func (cg *CourseGenerator) generateLesson(ctx context.Context, section models.ParsedSection, outputDir string, options models.ProcessingOptions, courseContent string) (*models.Lesson, error) {
 	fmt.Printf("Generating lesson: %s\n", section.Title)
 
 	// Enhance lesson content using LLM
@@ -141,14 +155,18 @@ func (cg *CourseGenerator) generateLesson(ctx context.Context, section models.Pa
 		return nil, fmt.Errorf("failed to generate audio: %w", err)
 	}
 
-	// Create video
-	videoPath, err := cg.videoAssembler.CreateVideo(audioPath, enhancedContent, outputDir, options)
+	// Generate lesson ID
+	lessonID := fmt.Sprintf("lesson_%d", utils.HashString(section.Content))
+	
+	// Create video - need course ID for storage
+	courseID := fmt.Sprintf("course_%d", utils.HashString(courseContent))
+	videoPath, err := cg.videoAssembler.CreateVideo(audioPath, enhancedContent, courseID, lessonID, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create video: %w", err)
 	}
 
 	lesson := &models.Lesson{
-		ID:                  fmt.Sprintf("lesson_%d", utils.HashString(section.Content)),
+		ID:                  lessonID,
 		Title:               section.Title,
 		Content:             enhancedContent,
 		VideoURL:            &videoPath,

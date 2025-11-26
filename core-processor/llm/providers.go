@@ -219,7 +219,7 @@ func (p *PaidProvider) GenerateText(ctx context.Context, prompt string, options 
 	// Simulate API call
 	select {
 	case <-time.After(200 * time.Millisecond):
-		return fmt.Sprintf("High-quality text from %s: %s", p.name, prompt[:50]), nil
+		return fmt.Sprintf("High-quality text from %s: %s", p.name, minString(prompt, 50)), nil
 	case <-ctx.Done():
 		return "", ctx.Err()
 	}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/course-creator/core-processor/models"
+	"github.com/course-creator/core-processor/storage"
 	"github.com/course-creator/core-processor/utils"
 )
 
@@ -48,11 +49,12 @@ const (
 
 // VideoAssembler handles video assembly from audio and visual elements
 type VideoAssembler struct {
-	config VideoConfig
+	config  VideoConfig
+	storage storage.StorageInterface
 }
 
 // NewVideoAssembler creates a new video assembler
-func NewVideoAssembler() *VideoAssembler {
+func NewVideoAssembler(storage storage.StorageInterface) *VideoAssembler {
 	config := VideoConfig{
 		Quality: VideoQuality{
 			Width:       1920,
@@ -77,7 +79,8 @@ func NewVideoAssembler() *VideoAssembler {
 	utils.EnsureDir(config.TempDir)
 
 	return &VideoAssembler{
-		config: config,
+		config:  config,
+		storage: storage,
 	}
 }
 
@@ -95,7 +98,8 @@ func NewVideoAssemblerWithConfig(config VideoConfig) *VideoAssembler {
 func (va *VideoAssembler) CreateVideo(
 	audioPath string,
 	textContent string,
-	outputDir string,
+	courseID string,
+	lessonID string,
 	options models.ProcessingOptions,
 ) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), va.config.Timeout)
@@ -103,14 +107,9 @@ func (va *VideoAssembler) CreateVideo(
 
 	fmt.Printf("Creating video from audio: %s\n", audioPath)
 
-	// Generate unique output path
+	// Generate unique output path using storage
 	videoName := fmt.Sprintf("video_%d.mp4", utils.HashString(textContent))
-	outputPath := filepath.Join(outputDir, videoName)
-
-	// Ensure output directory exists
-	if err := utils.EnsureDir(outputDir); err != nil {
-		return "", fmt.Errorf("failed to create output directory: %w", err)
-	}
+	storagePath := storage.GetVideoStoragePath(courseID, lessonID, videoName)
 
 	// Get audio duration
 	duration, err := va.getAudioDuration(ctx, audioPath)
@@ -131,15 +130,29 @@ func (va *VideoAssembler) CreateVideo(
 	segments := va.parseTextSegments(textContent, duration)
 
 	// Create video with text overlays
-	if err := va.assembleVideo(ctx, audioPath, backgroundPath, segments, outputPath, options); err != nil {
+	tempOutputPath := filepath.Join(va.config.TempDir, fmt.Sprintf("temp_video_%d.mp4", utils.HashString(textContent)))
+	if err := va.assembleVideo(ctx, audioPath, backgroundPath, segments, tempOutputPath, options); err != nil {
 		return "", fmt.Errorf("failed to assemble video: %w", err)
+	}
+	
+	// Read the video file and save to storage
+	videoData, err := os.ReadFile(tempOutputPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read video file: %w", err)
+	}
+	
+	// Save to storage
+	err = va.storage.Save(storagePath, videoData)
+	if err != nil {
+		return "", fmt.Errorf("failed to save video to storage: %w", err)
 	}
 
 	// Clean up temporary files
 	va.cleanup()
+	os.Remove(tempOutputPath) // Remove temp video file
 
-	fmt.Printf("Created video: %s\n", outputPath)
-	return outputPath, nil
+	fmt.Printf("Created video: %s\n", storagePath)
+	return storagePath, nil
 }
 
 // generateBackground creates a dynamic background
