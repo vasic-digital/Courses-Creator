@@ -2,14 +2,19 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/course-creator/core-processor/api"
+	"github.com/course-creator/core-processor/database"
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/pipeline"
 	"github.com/course-creator/core-processor/utils"
@@ -55,9 +60,15 @@ API integration test complete.`
 	err = utils.WriteFile(markdownPath, markdownContent)
 	require.NoError(t, err)
 
+	// Setup database
+	dbConfig := database.DefaultConfig()
+	db, err := database.NewDatabase(dbConfig)
+	require.NoError(t, err)
+	defer db.Close()
+
 	// Setup Gin router
 	router := gin.New()
-	handler := api.NewCourseHandler()
+	handler := api.NewCourseHandler(db)
 	
 	v1 := router.Group("/api/v1")
 	{

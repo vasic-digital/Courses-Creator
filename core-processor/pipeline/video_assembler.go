@@ -459,7 +459,7 @@ func (va *VideoAssembler) AddSubtitles(ctx context.Context, videoPath string, su
 	fmt.Printf("Adding subtitles to video: %s\n", videoPath)
 
 	// Create subtitle file
-	subtitlePath := filepath.Join(va.config.TempDir, fmt.Sprintf("subs_%d.srt", utils.GenerateID()))
+	subtitlePath := filepath.Join(va.config.TempDir, fmt.Sprintf("subs_%s.srt", utils.GenerateID()))
 	defer os.Remove(subtitlePath)
 
 	if err := va.createSRTSubtitleFile(subtitlePath, subtitles); err != nil {

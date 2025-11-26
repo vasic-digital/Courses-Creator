@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/course-creator/core-processor/api"
+	"github.com/course-creator/core-processor/database"
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/pipeline"
 	"github.com/gin-gonic/gin"
@@ -18,12 +19,20 @@ func StartServer() {
 	// Create Gin router
 	r := gin.Default()
 
+	// Initialize database
+	dbConfig := database.DefaultConfig()
+	db, err := database.NewDatabase(dbConfig)
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
 	// Add middleware
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
 	// Create handlers
-	courseHandler := api.NewCourseHandler()
+	courseHandler := api.NewCourseHandler(db)
 
 	// API routes
 	v1 := r.Group("/api/v1")

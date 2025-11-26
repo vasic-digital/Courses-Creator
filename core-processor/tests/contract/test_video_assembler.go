@@ -6,16 +6,25 @@ import (
 	"testing"
 
 	"github.com/course-creator/core-processor/models"
+	storage "github.com/course-creator/core-processor/filestorage"
 	"github.com/course-creator/core-processor/pipeline"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestVideoAssembler_CreateVideo_Basic(t *testing.T) {
-	assembler := pipeline.NewVideoAssembler()
+	// Create a mock storage
+	tempDir := t.TempDir()
+	storageConfig := storage.StorageConfig{
+		Type:      "local",
+		BasePath:  tempDir,
+		PublicURL: "http://localhost:8080/storage",
+	}
+	storageManager, _ := storage.NewStorageManagerWithDefault(storageConfig)
+	
+	assembler := pipeline.NewVideoAssembler(storageManager.DefaultProvider())
 
 	// Create temporary files
-	tempDir := t.TempDir()
 	audioPath := filepath.Join(tempDir, "test_audio.wav")
 
 	// Create placeholder audio file
@@ -25,8 +34,8 @@ func TestVideoAssembler_CreateVideo_Basic(t *testing.T) {
 	textContent := "This is test content for video."
 	options := models.ProcessingOptions{}
 
-	// Create video
-	resultPath, err := assembler.CreateVideo(audioPath, textContent, tempDir, options)
+	// Create video - now requires course and lesson IDs
+	resultPath, err := assembler.CreateVideo(audioPath, textContent, "test-course", "test-lesson", options)
 	require.NoError(t, err)
 	assert.NotEmpty(t, resultPath)
 
@@ -41,9 +50,17 @@ func TestVideoAssembler_CreateVideo_Basic(t *testing.T) {
 }
 
 func TestVideoAssembler_AddBackgroundMusic_NoFFmpeg(t *testing.T) {
-	assembler := pipeline.NewVideoAssembler()
-
+	// Create a mock storage
 	tempDir := t.TempDir()
+	storageConfig := storage.StorageConfig{
+		Type:      "local",
+		BasePath:  tempDir,
+		PublicURL: "http://localhost:8080/storage",
+	}
+	storageManager, _ := storage.NewStorageManagerWithDefault(storageConfig)
+	
+	assembler := pipeline.NewVideoAssembler(storageManager.DefaultProvider())
+
 	videoPath := filepath.Join(tempDir, "test.mp4")
 	musicPath := filepath.Join(tempDir, "music.mp3")
 
@@ -53,7 +70,7 @@ func TestVideoAssembler_AddBackgroundMusic_NoFFmpeg(t *testing.T) {
 	err = os.WriteFile(musicPath, []byte("fake music"), 0644)
 	require.NoError(t, err)
 
-	resultPath, err := assembler.AddBackgroundMusic(videoPath, musicPath)
+	resultPath, err := assembler.AddBackgroundMusic(nil, videoPath, musicPath, 0.5)
 	require.NoError(t, err)
 	// Should return original since FFmpeg not available
 	assert.Equal(t, videoPath, resultPath)
