@@ -103,12 +103,28 @@ As a course creator, I want the generated courses to play seamlessly on desktop,
 
 **Why this priority**: Platform compatibility ensures maximum accessibility and user convenience.
 
-**Independent Test**: Verify course playback works correctly across different devices and browsers.
+**Independent Test**: Test playback on desktop, web, and mobile.
 
 **Acceptance Scenarios**:
 
 1. **Given** generated course, **When** opened on desktop, **Then** plays without issues.
 2. **Given** generated course, **When** accessed on mobile, **Then** adapts layout and controls appropriately.
+
+---
+
+### User Story 8 - Flexible LLM Integration (Priority: P2)
+
+As a course creator, I want to use both free and paid LLM services based on my budget and quality needs so that I can optimize costs while maintaining content quality.
+
+**Why this priority**: Cost-effective access to AI capabilities enables broader adoption and scalability.
+
+**Independent Test**: Switch between different LLM providers and verify consistent output quality.
+
+**Acceptance Scenarios**:
+
+1. **Given** free LLM configured, **When** generating content, **Then** produces acceptable quality output.
+2. **Given** paid LLM configured, **When** generating content, **Then** produces higher quality output.
+3. **Given** paid service unavailable, **When** processing, **Then** falls back to free alternatives automatically.
 
 ### Edge Cases
 
@@ -132,6 +148,9 @@ As a course creator, I want the generated courses to play seamlessly on desktop,
 - **FR-008**: System MUST produce courses playable on Windows, macOS, Linux, web browsers, iOS, and Android.
 - **FR-009**: System MUST provide both creator tools (for making courses) and player applications (for viewing).
 - **FR-010**: System MUST achieve 100% test coverage with comprehensive automated tests.
+- **FR-011**: System MUST support both free and proprietary paid LLMs and tools, with flexible integration mechanisms for different pricing models and API access patterns.
+- **FR-012**: System MUST provide fallback mechanisms when paid services are unavailable or rate-limited.
+- **FR-013**: System MUST allow users to configure and switch between different LLM providers based on cost, quality, and availability preferences.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -150,3 +169,5 @@ As a course creator, I want the generated courses to play seamlessly on desktop,
 - **SC-003**: 95% user satisfaction rating for generated course quality and engagement.
 - **SC-004**: Successful playback on all target platforms without compatibility issues.
 - **SC-005**: 100% automated test coverage with all tests passing.
+- **SC-006**: Support for at least 3 free LLMs and 3 paid LLM services with seamless switching.
+- **SC-007**: Graceful degradation when paid services are unavailable, maintaining core functionality.

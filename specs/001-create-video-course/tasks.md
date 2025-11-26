@@ -201,17 +201,39 @@ Based on plan.md: Multi-project structure with core-processor/, creator-app/, pl
 
 ---
 
-## Phase 10: Polish & Cross-Cutting Concerns
+## Phase 11: User Story 8 - Flexible LLM Integration (Priority: P2)
+
+**Goal**: Support both free and paid LLM services with seamless switching
+
+**Independent Test**: Configure different LLM providers and verify consistent functionality
+
+### Tests for User Story 8 ⚠️
+
+- [ ] T061 [P] [US8] Contract test for LLM provider abstraction in core-processor/tests/contract/test_llm_providers.py
+- [ ] T062 [P] [US8] Integration test for provider switching in core-processor/tests/integration/test_llm_switching.py
+
+### Implementation for User Story 8
+
+- [ ] T063 [US8] Create LLM provider abstraction layer in core-processor/src/llm/providers.go
+- [ ] T064 [US8] Implement free LLM integrations (local models, public APIs)
+- [ ] T065 [US8] Implement paid LLM integrations (OpenAI, Anthropic, etc.)
+- [ ] T066 [US8] Add provider configuration and switching logic
+- [ ] T067 [US8] Implement fallback mechanisms for service failures
+- [ ] T068 [US8] Add usage tracking and cost monitoring
+
+---
+
+## Phase 12: Polish & Cross-Cutting Concerns
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T061 [P] Create comprehensive documentation in docs/
-- [ ] T062 [P] Write user tutorials and manuals
-- [ ] T063 [P] Implement API documentation
-- [ ] T064 Code cleanup and performance optimization
-- [ ] T065 [P] Add remaining unit tests to achieve 100% coverage
-- [ ] T066 Security hardening and privacy protection
-- [ ] T067 Run final validation and testing
+- [ ] T069 [P] Create comprehensive documentation in docs/
+- [ ] T070 [P] Write user tutorials and manuals
+- [ ] T071 [P] Implement API documentation
+- [ ] T072 Code cleanup and performance optimization
+- [ ] T073 [P] Add remaining unit tests to achieve 100% coverage
+- [ ] T074 Security hardening and privacy protection
+- [ ] T075 Run final validation and testing
 
 ---
 
@@ -221,11 +243,11 @@ Based on plan.md: Multi-project structure with core-processor/, creator-app/, pl
 
 - **Setup (Phase 1)**: No dependencies - can start immediately
 - **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
-- **User Stories (Phase 3-9)**: All depend on Foundational phase completion
+- **User Stories (Phase 3-11)**: All depend on Foundational phase completion
   - P1 stories can proceed in parallel
-  - P2 stories after P1 completion
+  - P2 stories (including US8) after P1 completion
   - P3 stories after P2 completion
-- **Polish (Phase 10)**: Depends on all user stories being complete
+- **Polish (Phase 12)**: Depends on all user stories being complete
 
 ### Parallel Opportunities
 

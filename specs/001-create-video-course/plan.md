@@ -18,7 +18,7 @@ Create a video course creator that converts markdown scripts into professional v
 **Target Platform**: Windows, macOS, Linux (desktop), Web browsers, iOS, Android (mobile)
 **Project Type**: Multi-platform application (creator tools + player)
 **Performance Goals**: Course generation under 10 minutes, 1080p video quality, smooth playback
-**Constraints**: High multimedia quality, user data privacy, AI ethical use, <500MB memory usage
+**Constraints**: High multimedia quality, user data privacy, AI ethical use, <500MB memory usage, support for free and paid LLM services
 **Scale/Scope**: Individual course creators, courses up to 10 hours, support for multiple output formats
 
 ## Constitution Check

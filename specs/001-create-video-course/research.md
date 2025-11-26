@@ -71,9 +71,13 @@ See attached code snippets for each MCP server implementation, including tool de
 3. Implement VideoPoet last due to access limitations
 4. Focus on local processing to maintain privacy
 5. Test integrations incrementally with small inputs
+6. Design modular LLM integration to support both free and paid services
+7. Implement provider abstraction layer for easy switching between services
 
 ## Risks & Mitigations
 - **Model Access**: Use open-source alternatives where proprietary models unavailable
 - **Performance**: Optimize model loading and caching
 - **Quality**: Implement quality checks and fallbacks
 - **Privacy**: Ensure no user data sent to external APIs without consent
+- **Cost Management**: Implement usage tracking and budget controls for paid services
+- **Service Reliability**: Build retry logic and fallback chains for API failures
