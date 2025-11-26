@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/course-creator/core-processor/llm"
 	"github.com/course-creator/core-processor/models"
-	"github.com/course-creator/core-processor/storage"
+	storage "github.com/course-creator/core-processor/filestorage"
 	"github.com/course-creator/core-processor/utils"
 )
 
@@ -29,8 +30,23 @@ func NewCourseGenerator() *CourseGenerator {
 	
 	storageManager, err := storage.NewStorageManager(storageConfigs)
 	if err != nil {
-		// Fallback to empty storage manager if creation fails
-		storageManager = &storage.StorageManager{}
+		// Try to create a minimal storage manager with local directory
+		config := storage.StorageConfig{
+			Type:      "local",
+			BasePath:  "./storage",
+			PublicURL: "http://localhost:8080/storage",
+		}
+		storageManager, err = storage.NewStorageManagerWithDefault(config)
+		if err != nil {
+			// As a last resort, create a storage manager that uses temp directory
+			tmpDir := os.TempDir()
+			config = storage.StorageConfig{
+				Type:      "local",
+				BasePath:  filepath.Join(tmpDir, "course-creator-storage"),
+				PublicURL: "http://localhost:8080/storage",
+			}
+			storageManager, _ = storage.NewStorageManagerWithDefault(config)
+		}
 	}
 	
 	return &CourseGenerator{

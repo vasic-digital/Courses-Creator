@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/course-creator/core-processor/models"
-	"github.com/course-creator/core-processor/storage"
+	storage "github.com/course-creator/core-processor/filestorage"
 	"github.com/course-creator/core-processor/utils"
 )
 

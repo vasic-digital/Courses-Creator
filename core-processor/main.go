@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/course-creator/core-processor/api"
+	"github.com/course-creator/core-processor/config"
 	"github.com/course-creator/core-processor/database"
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/pipeline"
@@ -40,6 +41,12 @@ func main() {
 }
 
 func startServer() {
+	// Load configuration
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+	
 	// Initialize database
 	dbConfig := database.DefaultConfig()
 	dbConfig.Debug = gin.Mode() == gin.DebugMode
@@ -60,7 +67,7 @@ func startServer() {
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
-	// Create handlers with database
+	// Create handlers with database and storage
 	courseHandler := api.NewCourseHandler(db)
 
 	// API routes
@@ -74,10 +81,15 @@ func startServer() {
 		v1.GET("/jobs", courseHandler.ListJobs)
 	}
 
+	// Static file serving from storage
+	defaultStorage := cfg.Storage["default"]
+	r.Static("/storage", defaultStorage.BasePath)
+
 	// Start server
 	port := "8080"
 	log.Printf("Starting Course Creator API server on port %s", port)
 	log.Printf("Database: %s", dbConfig.Path)
+	log.Printf("Storage: %s (type: %s)", defaultStorage.BasePath, defaultStorage.Type)
 	log.Fatal(r.Run(":" + port))
 }
 
