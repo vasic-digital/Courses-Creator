@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/course-creator/core-processor/llm"
 	"github.com/course-creator/core-processor/models"
@@ -16,6 +15,7 @@ type CourseGenerator struct {
 	markdownParser *utils.MarkdownParser
 	ttsProcessor   *TTSProcessor
 	videoAssembler *VideoAssembler
+	contentGen     *llm.CourseContentGenerator
 }
 
 // NewCourseGenerator creates a new course generator
