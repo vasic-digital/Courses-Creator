@@ -397,7 +397,7 @@ func (s *BaseServerImpl) handleToolCall(params interface{}) (interface{}, error)
 	}
 
 	arguments, _ := paramsMap["arguments"].(map[string]interface{})
-	result, err := tool.Handler(arguments)
+	_, err := tool.Handler(arguments)
 	if err != nil {
 		return nil, fmt.Errorf("tool execution failed: %w", err)
 	}

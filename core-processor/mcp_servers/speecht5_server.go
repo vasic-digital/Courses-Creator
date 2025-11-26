@@ -304,11 +304,10 @@ if %f != 1.0:
 # Save to file
 output_path = "%s/%s.wav"
 sf.write(output_path, speech.squeeze().numpy(), %d)
-
 print(output_path)
 `,
 		s.modelPath,
-		0, # Default speaker embedding
+		0, // Default speaker embedding
 		request.Text,
 		request.Speed,
 		request.Speed,

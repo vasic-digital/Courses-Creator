@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/course-creator/core-processor/api"
+	"github.com/course-creator/core-processor/database"
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/pipeline"
 	"github.com/gin-gonic/gin"
@@ -39,6 +40,16 @@ func main() {
 }
 
 func startServer() {
+	// Initialize database
+	dbConfig := database.DefaultConfig()
+	dbConfig.Debug = gin.Mode() == gin.DebugMode
+	
+	db, err := database.NewDatabase(dbConfig)
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
 	// Set Gin mode
 	gin.SetMode(gin.ReleaseMode)
 
@@ -49,8 +60,8 @@ func startServer() {
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
-	// Create handlers
-	courseHandler := api.NewCourseHandler()
+	// Create handlers with database
+	courseHandler := api.NewCourseHandler(db)
 
 	// API routes
 	v1 := r.Group("/api/v1")
@@ -59,11 +70,14 @@ func startServer() {
 		v1.POST("/courses/generate", courseHandler.GenerateCourse)
 		v1.GET("/courses", courseHandler.ListCourses)
 		v1.GET("/courses/:id", courseHandler.GetCourse)
+		v1.GET("/jobs/:id", courseHandler.GetJob)
+		v1.GET("/jobs", courseHandler.ListJobs)
 	}
 
 	// Start server
 	port := "8080"
 	log.Printf("Starting Course Creator API server on port %s", port)
+	log.Printf("Database: %s", dbConfig.Path)
 	log.Fatal(r.Run(":" + port))
 }
 
