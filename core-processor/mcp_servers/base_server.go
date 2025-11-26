@@ -1,4 +1,4 @@
-package mcpservers
+package mcp_servers
 
 import (
 	"fmt"

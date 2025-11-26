@@ -1,0 +1,47 @@
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+vendor/
+.cache/
+
+# Build outputs
+core-processor
+course-creator
+
+# Generated files
+courses/
+videos/
+audio/
+*.mp4
+*.wav
+*.mp3
+
+# MCP outputs
+mcp_outputs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

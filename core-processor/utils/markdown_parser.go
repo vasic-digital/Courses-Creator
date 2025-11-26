@@ -9,16 +9,16 @@ import (
 
 // MarkdownParser handles parsing of markdown course content
 type MarkdownParser struct {
-	headerPattern    *regexp.Regexp
-	codePattern      *regexp.Regexp
-	imagePattern     *regexp.Regexp
+	headerPattern *regexp.Regexp
+	codePattern   *regexp.Regexp
+	imagePattern  *regexp.Regexp
 }
 
 // NewMarkdownParser creates a new markdown parser
 func NewMarkdownParser() *MarkdownParser {
 	return &MarkdownParser{
 		headerPattern: regexp.MustCompile(`^#+\s+(.+)$`),
-		codePattern:   regexp.MustCompile(`(?s)```(\w+)?\n(.*?)\n```),
+		codePattern:   regexp.MustCompile(`(?s)\x60\x60\x60(\w+)?\n(.*?)\n\x60\x60\x60`),
 		imagePattern:  regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`),
 	}
 }
@@ -58,9 +58,16 @@ func (p *MarkdownParser) extractSections(content string) []models.ParsedSection 
 	var currentSection *models.ParsedSection
 	var currentContent []string
 	order := 0
+	firstHeaderFound := false
 
 	for _, line := range lines {
 		if matches := p.headerPattern.FindStringSubmatch(line); len(matches) > 1 {
+			// Skip the first header (title)
+			if !firstHeaderFound {
+				firstHeaderFound = true
+				continue
+			}
+
 			// Save previous section
 			if currentSection != nil {
 				currentSection.Content = strings.TrimSpace(strings.Join(currentContent, "\n"))
@@ -89,12 +96,23 @@ func (p *MarkdownParser) extractSections(content string) []models.ParsedSection 
 }
 
 func (p *MarkdownParser) extractDescription(content string) string {
-	firstHeader := p.headerPattern.FindStringIndex(content)
-	if firstHeader != nil {
-		description := content[:firstHeader[0]]
-		return strings.TrimSpace(description)
+	lines := strings.Split(content, "\n")
+	var descLines []string
+	titleFound := false
+	for _, line := range lines {
+		if p.headerPattern.MatchString(line) {
+			if !titleFound {
+				titleFound = true
+				continue
+			} else {
+				break
+			}
+		}
+		if strings.TrimSpace(line) != "" {
+			descLines = append(descLines, line)
+		}
 	}
-	return ""
+	return strings.TrimSpace(strings.Join(descLines, "\n"))
 }
 
 func (p *MarkdownParser) extractMetadata(content string) map[string]interface{} {

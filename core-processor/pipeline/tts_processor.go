@@ -57,7 +57,11 @@ func (tp *TTSProcessor) generateBarkTTS(text string, options models.ProcessingOp
 	//     "voice_preset": options.Voice,
 	// })
 
-	fmt.Printf("Generating Bark TTS for: %s...\n", text[:50])
+	preview := text
+	if len(text) > 50 {
+		preview = text[:50]
+	}
+	fmt.Printf("Generating Bark TTS for: %s...\n", preview)
 
 	// Simulate processing
 	outputPath := filepath.Join("/tmp", fmt.Sprintf("bark_audio_%d.wav", utils.HashString(text)))
@@ -74,7 +78,11 @@ func (tp *TTSProcessor) generateBarkTTS(text string, options models.ProcessingOp
 // generateSpeechT5TTS generates TTS using SpeechT5
 func (tp *TTSProcessor) generateSpeechT5TTS(text string, options models.ProcessingOptions) (string, error) {
 	// Placeholder for MCP call to SpeechT5 server
-	fmt.Printf("Generating SpeechT5 TTS for: %s...\n", text[:50])
+	preview := text
+	if len(text) > 50 {
+		preview = text[:50]
+	}
+	fmt.Printf("Generating SpeechT5 TTS for: %s...\n", preview)
 
 	outputPath := filepath.Join("/tmp", fmt.Sprintf("speecht5_audio_%d.wav", utils.HashString(text)))
 

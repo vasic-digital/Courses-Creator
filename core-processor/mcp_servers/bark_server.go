@@ -1,9 +1,11 @@
-package mcpservers
+package mcp_servers
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/course-creator/core-processor/utils"
 )
 
 // BarkTTSServer handles Bark text-to-speech generation
@@ -34,11 +36,15 @@ func (s *BarkTTSServer) generateTTS(args map[string]interface{}) (interface{}, e
 
 	voicePreset, _ := args["voice_preset"].(string)
 
-	fmt.Printf("Generating TTS for: %s...\n", text[:50])
+	preview := text
+	if len(text) > 50 {
+		preview = text[:50]
+	}
+	fmt.Printf("Generating TTS for: %s...\n", preview)
 
 	// Placeholder implementation
 	// In real implementation, this would call Bark TTS
-	outputPath := filepath.Join("/tmp", fmt.Sprintf("bark_tts_%d.wav", hashString(text)))
+	outputPath := filepath.Join("/tmp", fmt.Sprintf("bark_tts_%d.wav", utils.HashString(text)))
 
 	// Create placeholder file
 	err := os.WriteFile(outputPath, []byte("# Placeholder Bark audio\n"), 0644)
@@ -51,13 +57,4 @@ func (s *BarkTTSServer) generateTTS(args map[string]interface{}) (interface{}, e
 		"text":       text,
 		"voice":      voicePreset,
 	}, nil
-}
-
-// hashString creates a simple hash for unique filenames
-func hashString(s string) uint32 {
-	var h uint32
-	for _, c := range s {
-		h = h*31 + uint32(c)
-	}
-	return h
 }
