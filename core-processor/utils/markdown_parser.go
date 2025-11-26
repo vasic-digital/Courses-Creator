@@ -18,7 +18,7 @@ type MarkdownParser struct {
 func NewMarkdownParser() *MarkdownParser {
 	return &MarkdownParser{
 		headerPattern: regexp.MustCompile(`^#+\s+(.+)$`),
-		codePattern:   regexp.MustCompile(`(?s)```(\w+)?\n(.*?)\n````),
+		codePattern:   regexp.MustCompile(`(?s)```(\w+)?\n(.*?)\n```),
 		imagePattern:  regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`),
 	}
 }

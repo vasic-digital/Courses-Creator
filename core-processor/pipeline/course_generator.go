@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/course-creator/core-processor/models"
@@ -90,7 +91,7 @@ func (cg *CourseGenerator) generateLesson(section models.ParsedSection, outputDi
 	}
 
 	lesson := &models.Lesson{
-		ID:       fmt.Sprintf("lesson_%d", hashString(section.Content)),
+		ID:       fmt.Sprintf("lesson_%d", utils.HashString(section.Content)),
 		Title:    section.Title,
 		Content:  section.Content,
 		VideoURL: &videoPath,
@@ -115,8 +116,12 @@ func (cg *CourseGenerator) assembleCourse(course *models.Course, outputDir strin
 
 // Helper functions
 func readFile(path string) (string, error) {
-	// Placeholder - implement file reading
-	return "# Sample markdown content", nil
+	// Read file content
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
 }
 
 func getStringFromMap(m map[string]interface{}, key, defaultValue string) string {
@@ -135,12 +140,4 @@ func getStringSliceFromMap(m map[string]interface{}, key string, defaultValue []
 		}
 	}
 	return defaultValue
-}
-
-func hashString(s string) uint32 {
-	var h uint32
-	for _, c := range s {
-		h = h*31 + uint32(c)
-	}
-	return h
 }
