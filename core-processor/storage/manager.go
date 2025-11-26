@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,6 +36,11 @@ func NewStorageManager(configs map[string]StorageConfig) (*StorageManager, error
 	return sm, nil
 }
 
+// NewStorageManagerWithDefault creates a new storage manager with a single default provider
+func NewStorageManagerWithDefault(config StorageConfig) (*StorageManager, error) {
+	return NewStorageManager(map[string]StorageConfig{"default": config})
+}
+
 // GetProvider returns a storage provider by name, or default if name is empty
 func (sm *StorageManager) GetProvider(name string) StorageInterface {
 	if name == "" {
@@ -46,6 +52,67 @@ func (sm *StorageManager) GetProvider(name string) StorageInterface {
 // DefaultProvider returns the default storage provider
 func (sm *StorageManager) DefaultProvider() StorageInterface {
 	return sm.providers[sm.defaultName]
+}
+
+// Delegate methods to default provider
+func (sm *StorageManager) Save(path string, data []byte) error {
+	return sm.DefaultProvider().Save(path, data)
+}
+
+func (sm *StorageManager) SaveReader(path string, reader io.Reader) error {
+	return sm.DefaultProvider().SaveReader(path, reader)
+}
+
+func (sm *StorageManager) Load(path string) ([]byte, error) {
+	return sm.DefaultProvider().Load(path)
+}
+
+func (sm *StorageManager) Delete(path string) error {
+	return sm.DefaultProvider().Delete(path)
+}
+
+func (sm *StorageManager) Exists(path string) bool {
+	return sm.DefaultProvider().Exists(path)
+}
+
+func (sm *StorageManager) List(dir string) ([]string, error) {
+	return sm.DefaultProvider().List(dir)
+}
+
+func (sm *StorageManager) CreateDir(path string) error {
+	return sm.DefaultProvider().CreateDir(path)
+}
+
+func (sm *StorageManager) GetURL(path string) string {
+	return sm.DefaultProvider().GetURL(path)
+}
+
+func (sm *StorageManager) GetSize(path string) (int64, error) {
+	return sm.DefaultProvider().GetSize(path)
+}
+
+// SwitchProvider changes the default provider
+func (sm *StorageManager) SwitchProvider(config StorageConfig) error {
+	provider, err := createProvider(config)
+	if err != nil {
+		return err
+	}
+	
+	providerName := "switched"
+	sm.providers[providerName] = provider
+	sm.defaultName = providerName
+	
+	return nil
+}
+
+// GetCoursePath generates a storage path for course files
+func (sm *StorageManager) GetCoursePath(courseID string) string {
+	return filepath.Join("courses", courseID)
+}
+
+// GetLessonPath generates a storage path for lesson files
+func (sm *StorageManager) GetLessonPath(courseID, lessonID string) string {
+	return filepath.Join("courses", courseID, "lessons", lessonID)
 }
 
 // createProvider creates a storage provider based on configuration
