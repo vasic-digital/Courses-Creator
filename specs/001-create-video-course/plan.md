@@ -11,10 +11,10 @@ Create a video course creator that converts markdown scripts into professional v
 
 ## Technical Context
 
-**Language/Version**: Python 3.11 (backend processing), Node.js 18+ (UI apps), TypeScript (frontend)
-**Primary Dependencies**: MCP SDK, Transformers (Hugging Face), FFmpeg (video processing), Electron (desktop), React/React Native (UI)
+**Language/Version**: Go 1.21+ (backend processing), Node.js 18+ (UI apps), TypeScript (frontend)
+**Primary Dependencies**: Gin Gonic (REST API), MCP SDK (Go), FFmpeg (video processing), Electron (desktop), React/React Native (UI)
 **Storage**: SQLite (course metadata), file system (video/audio assets)
-**Testing**: pytest (Python), Jest (JavaScript), 100% coverage required
+**Testing**: Go testing framework, Jest (JavaScript), 100% coverage required
 **Target Platform**: Windows, macOS, Linux (desktop), Web browsers, iOS, Android (mobile)
 **Project Type**: Multi-platform application (creator tools + player)
 **Performance Goals**: Course generation under 10 minutes, 1080p video quality, smooth playback
@@ -51,16 +51,19 @@ specs/001-create-video-course/
 
 ```text
 core-processor/
-├── src/
-│   ├── mcp_servers/     # MCP server implementations for AI models
-│   ├── pipeline/        # Course generation pipeline
-│   ├── models/          # Data models for courses/lessons
-│   └── utils/           # Helper functions (markdown parsing, etc.)
+├── mcp_servers/         # MCP server implementations for AI models
+├── pipeline/            # Course generation pipeline
+├── models/              # Data models for courses/lessons
+├── utils/               # Helper functions (markdown parsing, etc.)
+├── api/                 # REST API handlers (Gin)
+├── cmd/                 # CLI applications
 ├── tests/
 │   ├── unit/
 │   ├── integration/
 │   └── contract/
-└── pyproject.toml
+├── go.mod
+├── go.sum
+└── main.go
 
 creator-app/
 ├── src/
