@@ -203,16 +203,6 @@ func (va *VideoAssembler) generateSolidBackground(ctx context.Context, outputPat
 
 // generateGradientBackground creates a gradient background
 func (va *VideoAssembler) generateGradientBackground(ctx context.Context, outputPath, textContent string, duration float64) (string, error) {
-	gradientColors := [][]string{
-		{"667eea", "764ba2"}, // Purple gradient
-		{"f093fb", "f5576c"}, // Pink gradient
-		{"4facfe", "00f2fe"}, // Blue gradient
-		{"43e97b", "38f9d7"}, // Green gradient
-		{"fa709a", "fee140"}, // Sunset gradient
-	}
-
-	// Choose gradient based on text hash
-	gradientIndex := int(utils.HashString(textContent)) % len(gradientColors)
 	// Create gradient filter
 	filter := fmt.Sprintf("color=red:s=%dx%d[d1];color=blue:s=%dx%d[d2];[d1][d2]scale2ref[d2][d1];[d2][d1]blend=all_mode=multiply",
 		va.config.Quality.Width, va.config.Quality.Height,
@@ -489,8 +479,7 @@ func (va *VideoAssembler) createSRTSubtitleFile(path string, subtitles []models.
 	var content strings.Builder
 	
 	for _, subtitle := range subtitles {
-		for i, timestampData := range subtitle.Timestamps {
-			timestampMap := timestampData.(map[string]interface{})
+		for i, timestampMap := range subtitle.Timestamps {
 			startTime := va.formatSRTTime(timestampMap["start"].(float64))
 			endTime := va.formatSRTTime(timestampMap["end"].(float64))
 			
