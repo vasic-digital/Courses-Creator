@@ -65,7 +65,7 @@ func startServer() {
 	defer db.Close()
 
 	// Set Gin mode
-	gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(gin.DebugMode)
 
 	// Initialize metrics
 	metrics.Init()
