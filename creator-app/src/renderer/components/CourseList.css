@@ -1,0 +1,132 @@
+.course-list {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.course-list h2 {
+  margin-bottom: 2rem;
+  color: #333;
+  text-align: center;
+}
+
+.course-list-loading,
+.course-list-error,
+.course-list-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #666;
+}
+
+.course-list-error {
+  color: #dc3545;
+}
+
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 2rem;
+}
+
+.course-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.course-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.course-header {
+  padding: 1.5rem 1.5rem 0;
+}
+
+.course-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.5rem;
+  line-height: 1.3;
+}
+
+.course-body {
+  padding: 1rem 1.5rem;
+}
+
+.course-description {
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.course-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.metadata-item {
+  font-size: 0.9rem;
+  color: #555;
+  background-color: #f8f9fa;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.course-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.date-item {
+  font-size: 0.85rem;
+  color: #777;
+}
+
+.course-footer {
+  padding: 1rem 1.5rem 1.5rem;
+  border-top: 1px solid #eee;
+}
+
+.play-button {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.play-button:hover {
+  background-color: #0069d9;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .course-list {
+    padding: 1rem;
+  }
+  
+  .course-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .course-metadata {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}

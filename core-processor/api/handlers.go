@@ -232,6 +232,11 @@ type GenerateCourseRequest struct {
 	Options      models.ProcessingOptions `json:"options,omitempty"`
 }
 
+type GenerateCourseRequestAPI struct {
+	Markdown string                   `json:"markdown" binding:"required"`
+	Options  models.ProcessingOptions `json:"options,omitempty"`
+}
+
 type GenerateCourseResponse struct {
 	JobID   string `json:"job_id"`
 	Status  string `json:"status"`
@@ -250,6 +255,38 @@ type ListJobsResponse struct {
 	Total int64                    `json:"total"`
 	Page  int                      `json:"page"`
 	Limit int                      `json:"limit"`
+}
+
+// CourseAPIService matches what the frontend expects
+func (h *CourseHandler) GetCourses(params map[string]interface{}) ([]models.CourseDB, error) {
+	page := 1
+	pageSize := 20
+	search := ""
+	
+	if p, ok := params["page"].(int); ok {
+		page = p
+	}
+	if ps, ok := params["pageSize"].(int); ok {
+		pageSize = ps
+	}
+	if s, ok := params["search"].(string); ok {
+		search = s
+	}
+	
+	offset := (page - 1) * pageSize
+	
+	if search != "" {
+		courses, _, err := h.courseRepo.SearchCourses(search, offset, pageSize)
+		return courses, err
+	}
+	
+	courses, _, err := h.courseRepo.GetAllCourses(offset, pageSize)
+	return courses, err
+}
+
+// GetCourseByID matches what the frontend expects
+func (h *CourseHandler) GetCourseByID(id string) (*models.CourseDB, error) {
+	return h.courseRepo.GetCourseByID(id)
 }
 
 // processCourseAsync processes a course asynchronously
