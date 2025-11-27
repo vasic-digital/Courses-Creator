@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"time"
 
+	"github.com/course-creator/core-processor/config"
 	"github.com/course-creator/core-processor/llm"
 	"github.com/course-creator/core-processor/models"
 	storage "github.com/course-creator/core-processor/filestorage"
@@ -14,7 +15,6 @@ import (
 
 // CourseGenerator orchestrates the entire course generation process
 type CourseGenerator struct {
-	markdownParser  *utils.MarkdownParser
 	ttsProcessor    *TTSProcessor
 	videoAssembler  *VideoAssembler
 	diagramProcessor *DiagramProcessor
@@ -24,40 +24,33 @@ type CourseGenerator struct {
 
 // NewCourseGenerator creates a new course generator
 func NewCourseGenerator() *CourseGenerator {
-	// Create storage manager with default local storage
-	storageConfigs := map[string]storage.StorageConfig{
-		"default": storage.DefaultStorageConfig(),
-	}
-	
-	storageManager, err := storage.NewStorageManager(storageConfigs)
-	if err != nil {
-		// Try to create a minimal storage manager with local directory
-		config := storage.StorageConfig{
-			Type:      "local",
-			BasePath:  "./storage",
-			PublicURL: "http://localhost:8080/storage",
-		}
-		storageManager, err = storage.NewStorageManagerWithDefault(config)
-		if err != nil {
-			// As a last resort, create a storage manager that uses temp directory
-			tmpDir := os.TempDir()
-			config = storage.StorageConfig{
+	// Use default configuration
+	cfg := &config.Config{
+		Storage: map[string]config.StorageConfig{
+			"default": config.StorageConfig{
 				Type:      "local",
-				BasePath:  filepath.Join(tmpDir, "course-creator-storage"),
+				BasePath:  "./storage",
 				PublicURL: "http://localhost:8080/storage",
-			}
-			storageManager, _ = storage.NewStorageManagerWithDefault(config)
-		}
+			},
+		},
+		TTS: config.TTSConfig{
+			Provider: "bark",
+			Timeout:  60 * time.Second,
+		},
+		LLM: config.LLMConfig{
+			DefaultProvider:   "ollama",
+			MaxCostPerRequest: 1.0,
+			PrioritizeQuality: true,
+			AllowPaid:        true,
+			Ollama: config.OllamaConfig{
+				BaseURL:     "http://localhost:11434",
+				DefaultModel: "llama2",
+			},
+		},
 	}
 	
-	return &CourseGenerator{
-		markdownParser:  utils.NewMarkdownParser(),
-		ttsProcessor:    NewTTSProcessor(),
-		videoAssembler:  NewVideoAssembler(storageManager.DefaultProvider()),
-		diagramProcessor: NewDiagramProcessor(storageManager.DefaultProvider()),
-		contentGen:      llm.NewCourseContentGenerator(),
-		storage:         storageManager,
-	}
+	factory := NewPipelineFactory(cfg)
+	return factory.NewCourseGenerator()
 }
 
 // GenerateCourse generates a complete video course from markdown
@@ -85,7 +78,7 @@ func (cg *CourseGenerator) GenerateCourse(markdownPath, outputDir string, option
 	}
 
 	// Parse markdown
-	parsedCourse, err := cg.markdownParser.Parse(content)
+	parsedCourse, err := utils.NewMarkdownParser().Parse(content)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse markdown: %w", err)
 	}
