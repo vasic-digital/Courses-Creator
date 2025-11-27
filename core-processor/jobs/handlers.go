@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/course-creator/core-processor/metrics"
 	"github.com/course-creator/core-processor/pipeline"
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/utils"
@@ -31,6 +32,7 @@ func (jc *JobContext) RegisterDefaultHandlers() {
 // HandleCourseGeneration handles course generation jobs
 func (jc *JobContext) HandleCourseGeneration(ctx context.Context, job *Job) error {
 	log.Printf("Starting course generation for job %s", job.ID)
+	startTime := time.Now()
 	
 	// Extract job parameters
 	inputPath, ok := job.Payload["input_path"].(string)
@@ -92,8 +94,12 @@ func (jc *JobContext) HandleCourseGeneration(ctx context.Context, job *Job) erro
 	// Generate course
 	result, err := jc.CourseGenerator.GenerateCourse(inputPath, outputPath, *options)
 	if err != nil {
+		metrics.RecordCourseGeneration("failed", options.Quality, time.Since(startTime))
 		return fmt.Errorf("failed to generate course: %w", err)
 	}
+	
+	// Record success metrics
+	metrics.RecordCourseGeneration("completed", options.Quality, time.Since(startTime))
 	
 	// Store result
 	jc.Queue.UpdateResult(job.ID, map[string]interface{}{

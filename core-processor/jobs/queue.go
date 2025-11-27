@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/course-creator/core-processor/metrics"
 	"github.com/course-creator/core-processor/models"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -253,6 +254,7 @@ func (jq *JobQueue) worker(id int) {
 // processJob processes a single job
 func (jq *JobQueue) processJob(job *Job) {
 	log.Printf("Processing job %s of type %s for user %s", job.ID, job.Type, job.UserID)
+	startTime := time.Now()
 	
 	// Update job status to running
 	job.Status = JobStatusRunning
@@ -271,12 +273,15 @@ func (jq *JobQueue) processJob(job *Job) {
 	jq.mu.Unlock()
 	
 	if !exists {
-		jq.markJobFailed(job, fmt.Sprintf("no handler registered for job type: %s", job.Type))
+		errorMsg := fmt.Sprintf("no handler registered for job type: %s", job.Type)
+		jq.markJobFailed(job, errorMsg)
+		metrics.RecordJobCompletion("failed", string(job.Type), time.Since(startTime))
 		return
 	}
 	
 	// Execute job handler
 	err := handler(jq.ctx, job)
+	duration := time.Since(startTime)
 	
 	// Send job to result processor for final update
 	select {
@@ -287,8 +292,10 @@ func (jq *JobQueue) processJob(job *Job) {
 	
 	if err != nil {
 		jq.markJobFailed(job, err.Error())
+		metrics.RecordJobCompletion("failed", string(job.Type), duration)
 	} else {
 		jq.markJobCompleted(job)
+		metrics.RecordJobCompletion("completed", string(job.Type), duration)
 	}
 }
 

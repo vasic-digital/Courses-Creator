@@ -11,6 +11,7 @@ import (
 	"github.com/course-creator/core-processor/database"
 	filestorage "github.com/course-creator/core-processor/filestorage"
 	"github.com/course-creator/core-processor/jobs"
+	"github.com/course-creator/core-processor/metrics"
 	"github.com/course-creator/core-processor/middleware"
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/pipeline"
@@ -66,12 +67,16 @@ func startServer() {
 	// Set Gin mode
 	gin.SetMode(gin.ReleaseMode)
 
+	// Initialize metrics
+	metrics.Init()
+
 	// Create Gin router
 	r := gin.Default()
 
 	// Add middleware
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+	r.Use(metrics.Middleware())
 
 	// Initialize authentication
 	authMiddleware := middleware.NewAuthMiddleware()
@@ -157,6 +162,9 @@ func startServer() {
 			authGroup.POST("/logout", authHandler.Logout)
 		}
 	}
+
+	// Metrics endpoint
+	v1.GET("/metrics", gin.WrapH(metrics.Handler()))
 
 	// Admin routes (admin role required)
 	admin := protected.Group("/admin")
