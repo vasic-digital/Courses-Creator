@@ -11,31 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-func setupTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	
-	// Migrate all tables
-	err = db.AutoMigrate(
-		&models.UserDB{},
-		&models.UserPreferencesDB{},
-		&models.UserSessionDB{},
-		&models.CourseDB{},
-		&models.JobDB{},
-		&models.LessonDB{},
-		&models.SubtitleDB{},
-		&models.InteractiveElementDB{},
-		&models.CourseMetadataDB{},
-		&models.ProcessingJobDB{},
-	)
-	require.NoError(t, err)
-	
-	return db
-}
+
 
 func TestAuthMiddleware(t *testing.T) {
 	auth := middleware.NewAuthMiddleware()
