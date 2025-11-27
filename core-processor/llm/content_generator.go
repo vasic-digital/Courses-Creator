@@ -3,9 +3,9 @@ package llm
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
+	"github.com/course-creator/core-processor/config"
 	"github.com/course-creator/core-processor/models"
 )
 
@@ -23,50 +23,15 @@ type CourseContentGenerator struct {
 }
 
 // NewCourseContentGenerator creates a new course content generator
-func NewCourseContentGenerator() *CourseContentGenerator {
-	manager := NewProviderManager()
+func NewCourseContentGenerator(cfg *config.LLMConfig) *CourseContentGenerator {
+	manager := NewProviderManager(cfg)
 	
-	// Auto-register available providers
-	generator := &CourseContentGenerator{
+	return &CourseContentGenerator{
 		providerManager: manager,
 	}
-	
-	// Register providers based on available API keys
-	generator.registerAvailableProviders()
-	
-	return generator
 }
 
-// registerAvailableProviders registers providers based on environment configuration
-func (ccg *CourseContentGenerator) registerAvailableProviders() {
-	// Register OpenAI if API key is available
-	if apiKey := os.Getenv("OPENAI_API_KEY"); apiKey != "" {
-		provider := NewOpenAIProvider(apiKey, os.Getenv("OPENAI_MODEL"))
-		ccg.providerManager.RegisterProvider(provider)
-		fmt.Printf("Registered OpenAI provider with model: %s\n", os.Getenv("OPENAI_MODEL"))
-	}
-	
-	// Register Anthropic if API key is available
-	if apiKey := os.Getenv("ANTHROPIC_API_KEY"); apiKey != "" {
-		provider := NewAnthropicProvider(apiKey, os.Getenv("ANTHROPIC_MODEL"))
-		ccg.providerManager.RegisterProvider(provider)
-		fmt.Printf("Registered Anthropic provider with model: %s\n", os.Getenv("ANTHROPIC_MODEL"))
-	}
-	
-	// Register Ollama if configured
-	if ollamaURL := os.Getenv("OLLAMA_URL"); ollamaURL != "" {
-		provider := NewOllamaProvider(ollamaURL, os.Getenv("OLLAMA_MODEL"))
-		ccg.providerManager.RegisterProvider(provider)
-		fmt.Printf("Registered Ollama provider at: %s with model: %s\n", ollamaURL, os.Getenv("OLLAMA_MODEL"))
-	} else {
-		// Try default Ollama installation
-		provider := NewOllamaProvider("", os.Getenv("OLLAMA_MODEL"))
-		if provider.IsAvailable() {
-			ccg.providerManager.RegisterProvider(provider)
-			fmt.Printf("Registered default Ollama provider with model: %s\n", os.Getenv("OLLAMA_MODEL"))
-		}
-	}
-}
+
 
 // GenerateCourseTitle generates a course title from content
 func (ccg *CourseContentGenerator) GenerateCourseTitle(ctx context.Context, content string) (string, error) {
