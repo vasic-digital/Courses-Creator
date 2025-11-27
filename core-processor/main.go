@@ -111,6 +111,7 @@ func startServer() {
 	courseHandler := api.NewCourseHandler(db)
 	authHandler := api.NewAuthHandler(authService, authMiddleware)
 	jobHandler := api.NewJobHandler(jobQueue)
+	courseAPIService := api.NewCourseAPIService(courseHandler)
 	
 	// Rate limiting middleware
 	rateLimiter := middleware.NewRateLimiter(100, time.Minute) // 100 requests per minute
@@ -120,6 +121,10 @@ func startServer() {
 	v1.Use(rateLimiter.Middleware())
 	{
 		v1.GET("/health", courseHandler.HealthCheck)
+		
+		// Public course routes
+		publicCourses := v1.Group("/public")
+		courseAPIService.RegisterCourseAPIRoutes(publicCourses)
 		
 		// Authentication routes
 		authGroup := v1.Group("/auth")
