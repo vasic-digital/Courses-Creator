@@ -80,12 +80,16 @@ func NewDatabase(config *Config) (*DB, error) {
 // autoMigrate runs database migrations
 func autoMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
+		&models.UserDB{},
+		&models.UserPreferencesDB{},
+		&models.UserSessionDB{},
 		&models.CourseDB{},
 		&models.CourseMetadataDB{},
 		&models.LessonDB{},
 		&models.SubtitleDB{},
 		&models.InteractiveElementDB{},
 		&models.ProcessingJobDB{},
+		&models.JobDB{},
 	)
 }
 
@@ -105,4 +109,9 @@ func (db *DB) Ping() error {
 		return fmt.Errorf("failed to get underlying SQL DB: %w", err)
 	}
 	return sqlDB.Ping()
+}
+
+// GetGormDB returns the underlying GORM DB instance
+func (db *DB) GetGormDB() *gorm.DB {
+	return db.DB
 }

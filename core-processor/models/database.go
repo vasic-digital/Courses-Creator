@@ -10,6 +10,7 @@ import (
 // CourseDB represents the database model for a Course
 type CourseDB struct {
 	ID          string         `gorm:"primaryKey;type:varchar(36)" json:"id"`
+	UserID      string         `gorm:"not null;type:varchar(36);index" json:"user_id"`
 	Title       string         `gorm:"not null;type:varchar(255)" json:"title"`
 	Description string         `gorm:"type:text" json:"description"`
 	CreatedAt   time.Time      `gorm:"autoCreateTime" json:"created_at"`
@@ -17,7 +18,8 @@ type CourseDB struct {
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 	
 	// Relations
-	Lessons     []LessonDB     `gorm:"foreignKey:CourseID;constraint:OnDelete:CASCADE" json:"lessons,omitempty"`
+	User        *UserDB          `gorm:"constraint:OnDelete:CASCADE" json:"user,omitempty"`
+	Lessons     []LessonDB       `gorm:"foreignKey:CourseID;constraint:OnDelete:CASCADE" json:"lessons,omitempty"`
 	Metadata    CourseMetadataDB `gorm:"foreignKey:CourseID;constraint:OnDelete:CASCADE" json:"metadata,omitempty"`
 }
 
@@ -167,4 +169,122 @@ func (InteractiveElementDB) TableName() string {
 
 func (ProcessingJobDB) TableName() string {
 	return "processing_jobs"
+}
+
+// UserDB represents the database model for a User
+type UserDB struct {
+	ID        string    `gorm:"primaryKey;type:varchar(36)" json:"id"`
+	Email     string    `gorm:"not null;uniqueIndex;type:varchar(255)" json:"email"`
+	Password  string    `gorm:"not null;type:varchar(255)" json:"-"` // Never expose password
+	FirstName string    `gorm:"type:varchar(100)" json:"first_name"`
+	LastName  string    `gorm:"type:varchar(100)" json:"last_name"`
+	Role      string    `gorm:"not null;type:varchar(20);default:'viewer'" json:"role"`
+	Active    bool      `gorm:"not null;default:true" json:"active"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	
+	// Relations
+	Preferences   []UserPreferencesDB `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"preferences,omitempty"`
+	Sessions      []UserSessionDB      `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"sessions,omitempty"`
+	Jobs          []JobDB              `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"jobs,omitempty"`
+	Courses       []CourseDB           `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"courses,omitempty"`
+}
+
+// UserPreferencesDB represents the database model for UserPreferences
+type UserPreferencesDB struct {
+	ID               string    `gorm:"primaryKey;type:varchar(36)" json:"id"`
+	UserID           string    `gorm:"not null;type:varchar(36);index" json:"user_id"`
+	Voice            string    `gorm:"type:varchar(50)" json:"voice"`
+	BackgroundStyle  string    `gorm:"type:varchar(50)" json:"background_style"`
+	Quality          string    `gorm:"type:varchar(20);default:'standard'" json:"quality"`
+	Language         string    `gorm:"type:varchar(10);default:'en'" json:"language"`
+	Preferences      string    `gorm:"type:text" json:"preferences"` // JSON string
+	CreatedAt        time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt        time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	
+	// Relations
+	User *UserDB `gorm:"constraint:OnDelete:CASCADE" json:"user,omitempty"`
+}
+
+// UserSessionDB represents the database model for UserSession
+type UserSessionDB struct {
+	ID           string    `gorm:"primaryKey;type:varchar(36)" json:"id"`
+	UserID       string    `gorm:"not null;type:varchar(36);index" json:"user_id"`
+	TokenHash    string    `gorm:"not null;type:varchar(255);index" json:"token_hash"`
+	RefreshToken *string   `gorm:"type:varchar(500)" json:"refresh_token,omitempty"`
+	IPAddress    string    `gorm:"type:varchar(45)" json:"ip_address"`
+	UserAgent    string    `gorm:"type:text" json:"user_agent"`
+	ExpiresAt    time.Time `gorm:"not null;index" json:"expires_at"`
+	CreatedAt    time.Time `gorm:"autoCreateTime" json:"created_at"`
+	LastActivity time.Time `gorm:"autoUpdateTime" json:"last_activity"`
+	
+	// Relations
+	User *UserDB `gorm:"constraint:OnDelete:CASCADE" json:"user,omitempty"`
+}
+
+// JobDB represents the database model for a Job
+type JobDB struct {
+	ID          string    `gorm:"primaryKey;type:varchar(36)" json:"id"`
+	UserID      string    `gorm:"not null;type:varchar(36);index" json:"user_id"`
+	Type        string    `gorm:"not null;type:varchar(50)" json:"type"`
+	Status      string    `gorm:"not null;type:varchar(20);default:'pending'" json:"status"`
+	Progress    int       `gorm:"default:0" json:"progress"`
+	Payload     string    `gorm:"type:text" json:"payload"` // JSON string
+	Result      string    `gorm:"type:text" json:"result,omitempty"` // JSON string
+	Error       *string   `gorm:"type:text" json:"error,omitempty"`
+	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	StartedAt   *time.Time `json:"started_at,omitempty"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	
+	// Relations
+	User *UserDB `gorm:"constraint:OnDelete:CASCADE" json:"user,omitempty"`
+}
+
+// BeforeCreate hooks for user models
+func (u *UserDB) BeforeCreate(tx *gorm.DB) error {
+	if u.ID == "" {
+		u.ID = uuid.New().String()
+	}
+	return nil
+}
+
+func (up *UserPreferencesDB) BeforeCreate(tx *gorm.DB) error {
+	if up.ID == "" {
+		up.ID = uuid.New().String()
+	}
+	return nil
+}
+
+func (us *UserSessionDB) BeforeCreate(tx *gorm.DB) error {
+	if us.ID == "" {
+		us.ID = uuid.New().String()
+	}
+	return nil
+}
+
+func (j *JobDB) BeforeCreate(tx *gorm.DB) error {
+	if j.ID == "" {
+		j.ID = uuid.New().String()
+	}
+	return nil
+}
+
+// TableName method overrides for user models
+func (UserDB) TableName() string {
+	return "users"
+}
+
+func (UserPreferencesDB) TableName() string {
+	return "user_preferences"
+}
+
+func (UserSessionDB) TableName() string {
+	return "user_sessions"
+}
+
+func (JobDB) TableName() string {
+	return "jobs"
 }

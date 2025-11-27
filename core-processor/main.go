@@ -4,12 +4,18 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/course-creator/core-processor/api"
 	"github.com/course-creator/core-processor/config"
 	"github.com/course-creator/core-processor/database"
+	filestorage "github.com/course-creator/core-processor/filestorage"
+	"github.com/course-creator/core-processor/jobs"
+	"github.com/course-creator/core-processor/middleware"
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/pipeline"
+	"github.com/course-creator/core-processor/services"
+	"github.com/course-creator/core-processor/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -67,18 +73,97 @@ func startServer() {
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
-	// Create handlers with database and storage
-	courseHandler := api.NewCourseHandler(db)
+	// Initialize authentication
+	authMiddleware := middleware.NewAuthMiddleware()
+	
+	// Initialize services
+	authService := services.NewAuthService(db.GetGormDB(), authMiddleware)
+	
+	// Initialize job queue
+	jobQueue := jobs.NewJobQueue(db.GetGormDB(), 4) // 4 workers
+	
+	// Initialize storage manager
+	storageManager, err := filestorage.NewStorageManagerWithDefault(filestorage.DefaultStorageConfig())
+	if err != nil {
+		log.Fatalf("Failed to initialize storage: %v", err)
+	}
+	
+	jobCtx := &jobs.JobContext{
+		Queue:           jobQueue,
+		Storage:         storageManager.DefaultProvider(),
+		MarkdownParser:  utils.NewMarkdownParser(),
+		CourseGenerator: pipeline.NewCourseGenerator(),
+	}
+	jobCtx.RegisterDefaultHandlers()
+	
+	// Start job queue
+	if err := jobQueue.Start(); err != nil {
+		log.Fatalf("Failed to start job queue: %v", err)
+	}
+	defer jobQueue.Stop()
 
-	// API routes
+	// Create handlers
+	courseHandler := api.NewCourseHandler(db)
+	authHandler := api.NewAuthHandler(authService, authMiddleware)
+	jobHandler := api.NewJobHandler(jobQueue)
+	
+	// Rate limiting middleware
+	rateLimiter := middleware.NewRateLimiter(100, time.Minute) // 100 requests per minute
+
+	// Public API routes (no auth required)
 	v1 := r.Group("/api/v1")
+	v1.Use(rateLimiter.Middleware())
 	{
 		v1.GET("/health", courseHandler.HealthCheck)
-		v1.POST("/courses/generate", courseHandler.GenerateCourse)
-		v1.GET("/courses", courseHandler.ListCourses)
-		v1.GET("/courses/:id", courseHandler.GetCourse)
-		v1.GET("/jobs/:id", courseHandler.GetJob)
-		v1.GET("/jobs", courseHandler.ListJobs)
+		
+		// Authentication routes
+		authGroup := v1.Group("/auth")
+		{
+			authGroup.POST("/register", authHandler.Register)
+			authGroup.POST("/login", authHandler.Login)
+			authGroup.POST("/refresh", authHandler.RefreshToken)
+			authGroup.GET("/types", jobHandler.GetJobTypes)
+		}
+	}
+
+	// Protected API routes (auth required)
+	protected := v1.Group("")
+	protected.Use(authMiddleware.RequireAuth())
+	{
+		// Course routes
+		courseGroup := protected.Group("/courses")
+		{
+			courseGroup.POST("/generate", courseHandler.GenerateCourse)
+			courseGroup.GET("", courseHandler.ListCourses)
+			courseGroup.GET("/:id", courseHandler.GetCourse)
+		}
+
+		// Job routes
+		jobGroup := protected.Group("/jobs")
+		{
+			jobGroup.POST("", jobHandler.CreateJob)
+			jobGroup.GET("", jobHandler.GetUserJobs)
+			jobGroup.GET("/:id", jobHandler.GetJob)
+			jobGroup.POST("/:id/cancel", jobHandler.CancelJob)
+			jobGroup.PUT("/:id/progress", jobHandler.UpdateJobProgress)
+		}
+
+		// User profile routes
+		authGroup := protected.Group("/auth")
+		{
+			authGroup.GET("/profile", authHandler.GetProfile)
+			authGroup.PUT("/profile", authHandler.UpdateProfile)
+			authGroup.PUT("/password", authHandler.UpdatePassword)
+			authGroup.POST("/logout", authHandler.Logout)
+		}
+	}
+
+	// Admin routes (admin role required)
+	admin := protected.Group("/admin")
+	admin.Use(authMiddleware.RequirePermission("system:admin"))
+	{
+		admin.POST("/users", authHandler.CreateUserByAdmin)
+		admin.GET("/jobs", jobHandler.GetSystemJobs)
 	}
 
 	// Static file serving from storage
@@ -90,6 +175,8 @@ func startServer() {
 	log.Printf("Starting Course Creator API server on port %s", port)
 	log.Printf("Database: %s", dbConfig.Path)
 	log.Printf("Storage: %s (type: %s)", defaultStorage.BasePath, defaultStorage.Type)
+	log.Printf("Job queue: started with %d workers", 4)
+	log.Printf("Authentication: enabled")
 	log.Fatal(r.Run(":" + port))
 }
 
