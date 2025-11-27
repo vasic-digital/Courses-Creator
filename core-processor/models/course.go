@@ -63,8 +63,20 @@ type Course struct {
 type ProcessingOptions struct {
 	Voice           *string  `json:"voice,omitempty"`
 	BackgroundMusic bool     `json:"background_music"`
+	BackgroundStyle string   `json:"background_style,omitempty"`
 	Languages       []string `json:"languages"`
 	Quality         string   `json:"quality"` // 'standard' or 'high'
+}
+
+// Diagram represents a diagram in a course
+type Diagram struct {
+	ID          string                 `json:"id"`
+	Type        string                 `json:"type"`
+	Title       string                 `json:"title"`
+	Description string                 `json:"description"`
+	ImageURL    *string                `json:"image_url,omitempty"`
+	Data        map[string]interface{} `json:"data"`
+	CreatedAt   time.Time              `json:"created_at"`
 }
 
 // ParsedSection represents a parsed section from markdown
