@@ -283,6 +283,11 @@ func (s *BaseServerImpl) handleConnection(ctx context.Context, conn net.Conn) {
 	}
 }
 
+// ProcessRequest processes a single JSON-RPC request (exported for testing)
+func (s *BaseServerImpl) ProcessRequest(jsonData string) MCPResponse {
+	return s.processRequest(jsonData)
+}
+
 // processRequest processes a single JSON-RPC request
 func (s *BaseServerImpl) processRequest(jsonData string) MCPResponse {
 	var request MCPRequest
@@ -411,6 +416,13 @@ func (s *BaseServerImpl) handleToolCall(params interface{}) (interface{}, error)
 		},
 		"isError": false,
 	}, nil
+}
+
+// IsRunning returns whether the server is currently running (exported for testing)
+func (s *BaseServerImpl) IsRunning() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.running
 }
 
 // Stop stops the server gracefully

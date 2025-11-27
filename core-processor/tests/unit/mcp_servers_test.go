@@ -71,7 +71,7 @@ func TestBaseServerImpl_ProcessRequest(t *testing.T) {
 
 	// Test initialize request
 	request := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`
-	response := server.processRequest(request)
+	response := server.ProcessRequest(request)
 
 	assert.Equal(t, "2.0", response.JSONRPC)
 	assert.Equal(t, float64(1), response.ID)
@@ -80,7 +80,7 @@ func TestBaseServerImpl_ProcessRequest(t *testing.T) {
 
 	// Test tools/list request
 	request = `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`
-	response = server.processRequest(request)
+	response = server.ProcessRequest(request)
 
 	assert.Equal(t, "2.0", response.JSONRPC)
 	assert.Equal(t, float64(2), response.ID)
@@ -89,7 +89,7 @@ func TestBaseServerImpl_ProcessRequest(t *testing.T) {
 
 	// Test invalid request
 	request = `{"jsonrpc":"2.0","id":3,"method":"invalid_method","params":{}}`
-	response = server.processRequest(request)
+	response = server.ProcessRequest(request)
 
 	assert.Equal(t, "2.0", response.JSONRPC)
 	assert.Equal(t, float64(3), response.ID)
@@ -164,7 +164,7 @@ func TestBarkTTSServer_ListVoices(t *testing.T) {
 	server := mcp_servers.NewBarkTTSServer()
 
 	args := map[string]interface{}{}
-	result, err := server.listVoices(args)
+	result, err := server.ListVoices(args)
 
 	require.NoError(t, err)
 	assert.NotNil(t, result)
@@ -189,13 +189,13 @@ func TestBarkTTSServer_SplitText(t *testing.T) {
 
 	// Test short text (no splitting)
 	shortText := "This is a short text"
-	chunks := server.splitText(shortText)
+	chunks := server.SplitText(shortText)
 	assert.Len(t, chunks, 1)
 	assert.Equal(t, shortText, chunks[0])
 
 	// Test long text (should be split)
 	longText := string(make([]byte, 300)) // Create long text
-	chunks = server.splitText(longText)
+	chunks = server.SplitText(longText)
 	assert.Greater(t, len(chunks), 1)
 }
 

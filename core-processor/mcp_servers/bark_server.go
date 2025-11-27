@@ -345,6 +345,11 @@ print(output_path)
 	return audioPath, nil
 }
 
+// SplitText splits text into chunks of maximum length (exported for testing)
+func (s *BarkTTSServer) SplitText(text string) []string {
+	return s.splitText(text)
+}
+
 // splitText splits text into chunks of maximum length
 func (s *BarkTTSServer) splitText(text string) []string {
 	if len(text) <= s.maxLength {
@@ -409,6 +414,11 @@ func (s *BarkTTSServer) combineAudioFiles(audioFiles []string, originalText stri
 	}
 	
 	return combinedPath, nil
+}
+
+// ListVoices lists available Bark voices (exported for testing)
+func (s *BarkTTSServer) ListVoices(args map[string]interface{}) (interface{}, error) {
+	return s.listVoices(args)
 }
 
 // listVoices lists available Bark voices

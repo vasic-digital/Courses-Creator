@@ -49,7 +49,7 @@ const (
 
 // VideoAssembler handles video assembly from audio and visual elements
 type VideoAssembler struct {
-	config  VideoConfig
+	Config  VideoConfig
 	storage storage.StorageInterface
 }
 
@@ -79,7 +79,7 @@ func NewVideoAssembler(storage storage.StorageInterface) *VideoAssembler {
 	utils.EnsureDir(config.TempDir)
 
 	return &VideoAssembler{
-		config:  config,
+		Config:  config,
 		storage: storage,
 	}
 }
@@ -90,7 +90,7 @@ func NewVideoAssemblerWithConfig(config VideoConfig) *VideoAssembler {
 	utils.EnsureDir(config.TempDir)
 	
 	return &VideoAssembler{
-		config: config,
+		Config: config,
 	}
 }
 
@@ -102,7 +102,7 @@ func (va *VideoAssembler) CreateVideo(
 	lessonID string,
 	options models.ProcessingOptions,
 ) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), va.config.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), va.Config.Timeout)
 	defer cancel()
 
 	fmt.Printf("Creating video from audio: %s\n", audioPath)
@@ -130,7 +130,7 @@ func (va *VideoAssembler) CreateVideo(
 	segments := va.parseTextSegments(textContent, duration)
 
 	// Create video with text overlays
-	tempOutputPath := filepath.Join(va.config.TempDir, fmt.Sprintf("temp_video_%d.mp4", utils.HashString(textContent)))
+	tempOutputPath := filepath.Join(va.Config.TempDir, fmt.Sprintf("temp_video_%d.mp4", utils.HashString(textContent)))
 	if err := va.assembleVideo(ctx, audioPath, backgroundPath, segments, tempOutputPath, options); err != nil {
 		return "", fmt.Errorf("failed to assemble video: %w", err)
 	}
@@ -157,7 +157,7 @@ func (va *VideoAssembler) CreateVideo(
 
 // generateBackground creates a dynamic background
 func (va *VideoAssembler) generateBackground(ctx context.Context, textContent string, duration float64, options models.ProcessingOptions) (string, error) {
-	backgroundPath := filepath.Join(va.config.TempDir, fmt.Sprintf("bg_%d.png", utils.HashString(textContent)))
+	backgroundPath := filepath.Join(va.Config.TempDir, fmt.Sprintf("bg_%d.png", utils.HashString(textContent)))
 
 	// Choose background style based on quality and preferences
 	var style BackgroundStyle
@@ -199,9 +199,9 @@ func (va *VideoAssembler) generateSolidBackground(ctx context.Context, outputPat
 	colorIndex := int(utils.HashString(textContent)) % len(colors)
 	color := colors[colorIndex]
 
-	cmd := utils.ExecuteCommand(ctx, va.config.FFmpegPath,
+	cmd := utils.ExecuteCommand(ctx, va.Config.FFmpegPath,
 		"-f", "lavfi",
-		"-i", fmt.Sprintf("color=c=%s:s=%dx%d:d=1", color, va.config.Quality.Width, va.config.Quality.Height),
+		"-i", fmt.Sprintf("color=c=%s:s=%dx%d:d=1", color, va.Config.Quality.Width, va.Config.Quality.Height),
 		"-frames:v", "1",
 		"-q:v", "1",
 		outputPath,
@@ -218,11 +218,11 @@ func (va *VideoAssembler) generateSolidBackground(ctx context.Context, outputPat
 func (va *VideoAssembler) generateGradientBackground(ctx context.Context, outputPath, textContent string, duration float64) (string, error) {
 	// Create gradient filter
 	filter := fmt.Sprintf("color=red:s=%dx%d[d1];color=blue:s=%dx%d[d2];[d1][d2]scale2ref[d2][d1];[d2][d1]blend=all_mode=multiply",
-		va.config.Quality.Width, va.config.Quality.Height,
-		va.config.Quality.Width, va.config.Quality.Height,
+		va.Config.Quality.Width, va.Config.Quality.Height,
+		va.Config.Quality.Width, va.Config.Quality.Height,
 	)
 
-	cmd := utils.ExecuteCommand(ctx, va.config.FFmpegPath,
+	cmd := utils.ExecuteCommand(ctx, va.Config.FFmpegPath,
 		"-f", "lavfi",
 		"-i", filter,
 		"-frames:v", "1",
@@ -242,9 +242,9 @@ func (va *VideoAssembler) generateGradientBackground(ctx context.Context, output
 func (va *VideoAssembler) generatePatternBackground(ctx context.Context, outputPath, textContent string) (string, error) {
 	// Create a pattern using FFmpeg's geq filter
 	filter := fmt.Sprintf("geq=lum='p(X,Y)':cb='p(X,Y)':cr='p(X,Y)':s=%dx%d",
-		va.config.Quality.Width, va.config.Quality.Height)
+		va.Config.Quality.Width, va.Config.Quality.Height)
 
-	cmd := utils.ExecuteCommand(ctx, va.config.FFmpegPath,
+	cmd := utils.ExecuteCommand(ctx, va.Config.FFmpegPath,
 		"-f", "lavfi",
 		"-i", filter,
 		"-frames:v", "1",
@@ -263,16 +263,16 @@ func (va *VideoAssembler) generatePatternBackground(ctx context.Context, outputP
 // generateAnimatedBackground creates an animated background
 func (va *VideoAssembler) generateAnimatedBackground(ctx context.Context, outputPath, textContent string, duration float64) (string, error) {
 	// Create animated gradient
-	animOutput := filepath.Join(va.config.TempDir, fmt.Sprintf("anim_bg_%d.mp4", utils.HashString(textContent)))
+	animOutput := filepath.Join(va.Config.TempDir, fmt.Sprintf("anim_bg_%d.mp4", utils.HashString(textContent)))
 	defer os.Remove(animOutput)
 
 	// Create animated gradient filter
 	filter := fmt.Sprintf("color=red:s=%dx%d:d=%.1f[c1];color=blue:s=%dx%d:d=%.1f[c2];[c1][c2]blend=all_mode=multiply",
-		va.config.Quality.Width, va.config.Quality.Height, duration,
-		va.config.Quality.Width, va.config.Quality.Height, duration,
+		va.Config.Quality.Width, va.Config.Quality.Height, duration,
+		va.Config.Quality.Width, va.Config.Quality.Height, duration,
 	)
 
-	cmd := utils.ExecuteCommand(ctx, va.config.FFmpegPath,
+	cmd := utils.ExecuteCommand(ctx, va.Config.FFmpegPath,
 		"-f", "lavfi",
 		"-i", filter,
 		"-c:v", "libx264",
@@ -289,7 +289,7 @@ func (va *VideoAssembler) generateAnimatedBackground(ctx context.Context, output
 	}
 
 	// Extract first frame as background
-	frameCmd := utils.ExecuteCommand(ctx, va.config.FFmpegPath,
+	frameCmd := utils.ExecuteCommand(ctx, va.Config.FFmpegPath,
 		"-i", animOutput,
 		"-ss", "0.1",
 		"-frames:v", "1",
@@ -302,6 +302,11 @@ func (va *VideoAssembler) generateAnimatedBackground(ctx context.Context, output
 	}
 
 	return outputPath, nil
+}
+
+// ParseTextSegments parses text content into timed segments (exported for testing)
+func (va *VideoAssembler) ParseTextSegments(textContent string, duration float64) []TextSegment {
+	return va.parseTextSegments(textContent, duration)
 }
 
 // parseTextSegments parses text content into timed segments
@@ -353,19 +358,19 @@ func (va *VideoAssembler) assembleVideo(ctx context.Context, audioPath, backgrou
 		"-i", backgroundPath,
 		"-i", audioPath,
 		"-filter_complex", textFilter,
-		"-c:v", va.config.Quality.Codec,
+		"-c:v", va.Config.Quality.Codec,
 		"-preset", "medium",
 		"-crf", "23",
 		"-c:a", "aac",
 		"-b:a", "128k",
-		"-pix_fmt", va.config.Quality.PixelFormat,
-		"-r", strconv.Itoa(va.config.Quality.Framerate),
+		"-pix_fmt", va.Config.Quality.PixelFormat,
+		"-r", strconv.Itoa(va.Config.Quality.Framerate),
 		"-t", fmt.Sprintf("%.2f", segments[len(segments)-1].EndTime),
 		"-shortest",
 		outputPath,
 	}
 
-	cmd := utils.ExecuteCommand(ctx, va.config.FFmpegPath, args...)
+	cmd := utils.ExecuteCommand(ctx, va.Config.FFmpegPath, args...)
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to assemble video: %w", err)
@@ -396,7 +401,7 @@ func (va *VideoAssembler) createTextOverlayFilter(segments []TextSegment, option
 			"drawtext=text='%s':x=(w-tw)/2:y=h-150:fontsize=%d:fontcolor=white:fontfile='%s':enable='between(t,%.2f,%.2f)'",
 			escapedText,
 			fontSize,
-			va.config.FontPath,
+			va.Config.FontPath,
 			segment.StartTime,
 			segment.EndTime,
 		)
@@ -435,7 +440,7 @@ func (va *VideoAssembler) escapeFFmpegText(text string) string {
 func (va *VideoAssembler) getAudioDuration(ctx context.Context, audioPath string) (float64, error) {
 	output, err := utils.ExecuteCommandWithOutput(
 		ctx,
-		va.config.FFprobePath,
+		va.Config.FFprobePath,
 		"-v", "quiet",
 		"-show_entries", "format=duration",
 		"-of", "csv=p=0",
@@ -459,7 +464,7 @@ func (va *VideoAssembler) AddSubtitles(ctx context.Context, videoPath string, su
 	fmt.Printf("Adding subtitles to video: %s\n", videoPath)
 
 	// Create subtitle file
-	subtitlePath := filepath.Join(va.config.TempDir, fmt.Sprintf("subs_%s.srt", utils.GenerateID()))
+	subtitlePath := filepath.Join(va.Config.TempDir, fmt.Sprintf("subs_%s.srt", utils.GenerateID()))
 	defer os.Remove(subtitlePath)
 
 	if err := va.createSRTSubtitleFile(subtitlePath, subtitles); err != nil {
@@ -479,7 +484,7 @@ func (va *VideoAssembler) AddSubtitles(ctx context.Context, videoPath string, su
 		outputPath,
 	}
 
-	cmd := utils.ExecuteCommand(ctx, va.config.FFmpegPath, args...)
+	cmd := utils.ExecuteCommand(ctx, va.Config.FFmpegPath, args...)
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("failed to add subtitles: %w", err)
 	}
@@ -534,7 +539,7 @@ func (va *VideoAssembler) AddBackgroundMusic(ctx context.Context, videoPath, mus
 		outputPath,
 	}
 
-	cmd := utils.ExecuteCommand(ctx, va.config.FFmpegPath, args...)
+	cmd := utils.ExecuteCommand(ctx, va.Config.FFmpegPath, args...)
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("failed to add background music: %w", err)
 	}
@@ -544,5 +549,5 @@ func (va *VideoAssembler) AddBackgroundMusic(ctx context.Context, videoPath, mus
 
 // cleanup removes temporary files
 func (va *VideoAssembler) cleanup() {
-	utils.CleanTempFiles(va.config.TempDir, time.Hour)
+	utils.CleanTempFiles(va.Config.TempDir, time.Hour)
 }

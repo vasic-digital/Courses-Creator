@@ -39,10 +39,10 @@ type TTSConfig struct {
 
 // TTSProcessor handles text-to-speech generation
 type TTSProcessor struct {
-	config        TTSConfig
-	barkServer    *mcp_servers.BarkTTSServer
+	Config        TTSConfig
+	BarkServer    *mcp_servers.BarkTTSServer
 	mu            sync.RWMutex
-	running       bool
+	Running       bool
 }
 
 // AudioSegment represents a processed audio segment
@@ -72,9 +72,9 @@ func NewTTSProcessor() *TTSProcessor {
 	utils.EnsureDir(config.OutputDir)
 
 	return &TTSProcessor{
-		config:         config,
-		barkServer:     mcp_servers.NewBarkTTSServer(),
-		running:        true,
+		Config:         config,
+		BarkServer:     mcp_servers.NewBarkTTSServer(),
+		Running:        true,
 	}
 }
 
@@ -84,28 +84,28 @@ func NewTTSProcessorWithConfig(config TTSConfig) *TTSProcessor {
 	utils.EnsureDir(config.OutputDir)
 
 	return &TTSProcessor{
-		config:         config,
-		barkServer:     mcp_servers.NewBarkTTSServer(),
-		running:        true,
+		Config:         config,
+		BarkServer:     mcp_servers.NewBarkTTSServer(),
+		Running:        true,
 	}
 }
 
 // GenerateAudio generates audio from text using configured TTS
 func (tp *TTSProcessor) GenerateAudio(text string, options models.ProcessingOptions) (string, error) {
 	tp.mu.RLock()
-	if !tp.running {
+	if !tp.Running {
 		tp.mu.RUnlock()
 		return "", fmt.Errorf("TTS processor is not running")
 	}
 	tp.mu.RUnlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), tp.config.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), tp.Config.Timeout)
 	defer cancel()
 
 	fmt.Printf("Generating audio for text length: %d\n", len(text))
 
 	// Choose TTS provider based on options or default
-	provider := tp.config.DefaultProvider
+	provider := tp.Config.DefaultProvider
 	if options.Voice != nil {
 		switch *options.Voice {
 		case "speecht5":
@@ -139,7 +139,7 @@ func (tp *TTSProcessor) GenerateAudio(text string, options models.ProcessingOpti
 // generateAudioSegments generates audio for multiple text chunks
 func (tp *TTSProcessor) generateAudioSegments(ctx context.Context, chunks []string, provider TTSProvider, options models.ProcessingOptions) ([]AudioSegment, error) {
 	segments := make([]AudioSegment, len(chunks))
-	sem := make(chan struct{}, tp.config.Parallelism)
+	sem := make(chan struct{}, tp.Config.Parallelism)
 	errCh := make(chan error, len(chunks))
 	wg := sync.WaitGroup{}
 
@@ -183,7 +183,7 @@ func (tp *TTSProcessor) generateSingleSegment(ctx context.Context, text string, 
 	var err error
 
 	// Retry logic
-	for attempt := 0; attempt < tp.config.MaxRetries; attempt++ {
+	for attempt := 0; attempt < tp.Config.MaxRetries; attempt++ {
 		switch provider {
 		case TTSProviderBark:
 			audioPath, err = tp.generateBarkTTS(ctx, text, options, index)
@@ -197,7 +197,7 @@ func (tp *TTSProcessor) generateSingleSegment(ctx context.Context, text string, 
 			break
 		}
 
-		if attempt < tp.config.MaxRetries-1 {
+		if attempt < tp.Config.MaxRetries-1 {
 			fmt.Printf("TTS attempt %d failed, retrying: %v\n", attempt+1, err)
 			time.Sleep(time.Duration(attempt+1) * time.Second)
 		}
@@ -249,7 +249,7 @@ func (tp *TTSProcessor) generateBarkTTS(ctx context.Context, text string, option
 	}
 
 	// Call Bark server
-	result, err := tp.barkServer.GenerateTTS(args)
+	result, err := tp.BarkServer.GenerateTTS(args)
 	if err != nil {
 		return "", fmt.Errorf("Bark TTS failed: %w", err)
 	}
@@ -295,7 +295,7 @@ func (tp *TTSProcessor) generateSpeechT5TTS(ctx context.Context, text string, op
 	}
 
 	// Call Bark server (using Bark as fallback since SpeechT5 server was removed)
-	result, err := tp.barkServer.GenerateTTS(args)
+	result, err := tp.BarkServer.GenerateTTS(args)
 	if err != nil {
 		return "", fmt.Errorf("Bark TTS failed: %w", err)
 	}
@@ -316,7 +316,7 @@ func (tp *TTSProcessor) generateSpeechT5TTS(ctx context.Context, text string, op
 
 // splitText splits text into manageable chunks
 func (tp *TTSProcessor) splitText(text string) []string {
-	if len(text) <= tp.config.ChunkSize {
+	if len(text) <= tp.Config.ChunkSize {
 		return []string{text}
 	}
 
@@ -328,7 +328,7 @@ func (tp *TTSProcessor) splitText(text string) []string {
 
 	for _, sentence := range sentences {
 		sentenceLength := len(sentence)
-		if currentLength+sentenceLength <= tp.config.ChunkSize {
+		if currentLength+sentenceLength <= tp.Config.ChunkSize {
 			currentChunk = append(currentChunk, sentence)
 			currentLength += sentenceLength
 		} else {
@@ -343,15 +343,15 @@ func (tp *TTSProcessor) splitText(text string) []string {
 				wordLength := 0
 
 				for _, word := range words {
-					if wordLength+len(word)+1 > tp.config.ChunkSize {
+					if wordLength+len(word)+1 > tp.Config.ChunkSize {
 						if len(currentWords) > 0 {
 							chunks = append(chunks, joinWords(currentWords))
 							currentWords = []string{word}
 							wordLength = len(word)
 						} else {
 							// Single word too long, split it
-							for i := 0; i < len(word); i += tp.config.ChunkSize {
-								end := i + tp.config.ChunkSize
+							for i := 0; i < len(word); i += tp.Config.ChunkSize {
+								end := i + tp.Config.ChunkSize
 								if end > len(word) {
 									end = len(word)
 								}
@@ -480,7 +480,7 @@ func (tp *TTSProcessor) combineAudioSegments(segments []AudioSegment, originalTe
 	}
 
 	// Create a list file for FFmpeg concat
-	listPath := filepath.Join(tp.config.OutputDir, fmt.Sprintf("concat_list_%d.txt", utils.HashString(originalText)))
+	listPath := filepath.Join(tp.Config.OutputDir, fmt.Sprintf("concat_list_%d.txt", utils.HashString(originalText)))
 	var listContent string
 	for _, segment := range segments {
 		listContent += fmt.Sprintf("file '%s'\n", segment.Path)
@@ -492,9 +492,9 @@ func (tp *TTSProcessor) combineAudioSegments(segments []AudioSegment, originalTe
 	defer os.Remove(listPath)
 
 	// Combine audio using FFmpeg
-	outputPath := filepath.Join(tp.config.OutputDir, fmt.Sprintf("combined_%d.%s", utils.HashString(originalText), tp.config.Format))
+	outputPath := filepath.Join(tp.Config.OutputDir, fmt.Sprintf("combined_%d.%s", utils.HashString(originalText), tp.Config.Format))
 	
-	ctx, cancel := context.WithTimeout(context.Background(), tp.config.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), tp.Config.Timeout)
 	defer cancel()
 
 	_, err := utils.ExecuteCommandWithOutput(
@@ -522,12 +522,12 @@ func (tp *TTSProcessor) combineAudioSegments(segments []AudioSegment, originalTe
 func (tp *TTSProcessor) Stop() {
 	tp.mu.Lock()
 	defer tp.mu.Unlock()
-	tp.running = false
+	tp.Running = false
 }
 
 // IsRunning checks if the TTS processor is running
 func (tp *TTSProcessor) IsRunning() bool {
 	tp.mu.RLock()
 	defer tp.mu.RUnlock()
-	return tp.running
+	return tp.Running
 }

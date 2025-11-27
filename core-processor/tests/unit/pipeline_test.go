@@ -10,6 +10,7 @@ import (
 
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/pipeline"
+	storage "github.com/course-creator/core-processor/filestorage"
 	"github.com/course-creator/core-processor/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,12 +20,12 @@ func TestTTSProcessor_NewTTSProcessor(t *testing.T) {
 	processor := pipeline.NewTTSProcessor()
 
 	require.NotNil(t, processor)
-	assert.Equal(t, pipeline.TTSProviderBark, processor.config.DefaultProvider)
-	assert.Equal(t, "/tmp/course_audio", processor.config.OutputDir)
-	assert.Equal(t, 24000, processor.config.SampleRate)
-	assert.Equal(t, 128000, processor.config.BitRate)
-	assert.Equal(t, "wav", processor.config.Format)
-	assert.True(t, processor.IsRunning())
+	assert.Equal(t, pipeline.TTSProviderBark, processor.Config.DefaultProvider)
+	assert.Equal(t, "/tmp/course_audio", processor.Config.OutputDir)
+	assert.Equal(t, 24000, processor.Config.SampleRate)
+	assert.Equal(t, 128000, processor.Config.BitRate)
+	assert.Equal(t, "wav", processor.Config.Format)
+	assert.True(t, processor.Running)
 }
 
 func TestTTSProcessor_NewTTSProcessorWithConfig(t *testing.T) {
@@ -43,11 +44,11 @@ func TestTTSProcessor_NewTTSProcessorWithConfig(t *testing.T) {
 	processor := pipeline.NewTTSProcessorWithConfig(config)
 
 	require.NotNil(t, processor)
-	assert.Equal(t, pipeline.TTSProviderSpeechT5, processor.config.DefaultProvider)
-	assert.Equal(t, "/custom/audio", processor.config.OutputDir)
-	assert.Equal(t, 16000, processor.config.SampleRate)
-	assert.Equal(t, 96000, processor.config.BitRate)
-	assert.Equal(t, "mp3", processor.config.Format)
+	assert.Equal(t, pipeline.TTSProviderSpeechT5, processor.Config.DefaultProvider)
+	assert.Equal(t, "/custom/audio", processor.Config.OutputDir)
+	assert.Equal(t, 16000, processor.Config.SampleRate)
+	assert.Equal(t, 96000, processor.Config.BitRate)
+	assert.Equal(t, "mp3", processor.Config.Format)
 }
 
 func TestTTSProcessor_GenerateAudio(t *testing.T) {
@@ -76,13 +77,13 @@ func TestTTSProcessor_SplitText(t *testing.T) {
 
 	// Test short text (no splitting)
 	shortText := "This is a short text"
-	chunks := processor.splitText(shortText)
+	chunks := processor.BarkServer.SplitText(shortText)
 	assert.Len(t, chunks, 1)
 	assert.Equal(t, shortText, chunks[0])
 
 	// Test long text (should be split)
 	longText := string(make([]byte, 300)) // Create long text
-	chunks = processor.splitText(longText)
+	chunks = processor.BarkServer.SplitText(longText)
 	assert.Greater(t, len(chunks), 1)
 
 	// Verify that concatenated chunks equal original text
@@ -107,15 +108,23 @@ func TestTTSProcessor_Stop(t *testing.T) {
 }
 
 func TestVideoAssembler_NewVideoAssembler(t *testing.T) {
-	assembler := pipeline.NewVideoAssembler()
+	// Create a temporary storage for testing
+	tempDir := "/tmp/test_storage"
+	storageConfig := storage.StorageConfig{
+		BasePath: tempDir,
+		PublicURL: "",
+	}
+	storage := storage.NewLocalStorage(storageConfig)
+	
+	assembler := pipeline.NewVideoAssembler(storage)
 
 	require.NotNil(t, assembler)
-	assert.Equal(t, 1920, assembler.config.Quality.Width)
-	assert.Equal(t, 1080, assembler.config.Quality.Height)
-	assert.Equal(t, "2M", assembler.config.Quality.Bitrate)
-	assert.Equal(t, 30, assembler.config.Quality.Framerate)
-	assert.Equal(t, "libx264", assembler.config.Quality.Codec)
-	assert.Equal(t, "yuv420p", assembler.config.Quality.PixelFormat)
+	assert.Equal(t, 1920, assembler.Config.Quality.Width)
+	assert.Equal(t, 1080, assembler.Config.Quality.Height)
+	assert.Equal(t, "2M", assembler.Config.Quality.Bitrate)
+	assert.Equal(t, 30, assembler.Config.Quality.Framerate)
+	assert.Equal(t, "libx264", assembler.Config.Quality.Codec)
+	assert.Equal(t, "yuv420p", assembler.Config.Quality.PixelFormat)
 }
 
 func TestVideoAssembler_NewVideoAssemblerWithConfig(t *testing.T) {
@@ -141,15 +150,22 @@ func TestVideoAssembler_NewVideoAssemblerWithConfig(t *testing.T) {
 	assembler := pipeline.NewVideoAssemblerWithConfig(config)
 
 	require.NotNil(t, assembler)
-	assert.Equal(t, 1280, assembler.config.Quality.Width)
-	assert.Equal(t, 720, assembler.config.Quality.Height)
-	assert.Equal(t, "1M", assembler.config.Quality.Bitrate)
-	assert.Equal(t, 25, assembler.config.Quality.Framerate)
-	assert.Equal(t, "libx265", assembler.config.Quality.Codec)
+	assert.Equal(t, 1280, assembler.Config.Quality.Width)
+	assert.Equal(t, 720, assembler.Config.Quality.Height)
+	assert.Equal(t, "1M", assembler.Config.Quality.Bitrate)
+	assert.Equal(t, 25, assembler.Config.Quality.Framerate)
+	assert.Equal(t, "libx265", assembler.Config.Quality.Codec)
 }
 
 func TestVideoAssembler_ParseTextSegments(t *testing.T) {
-	assembler := pipeline.NewVideoAssembler()
+	// Create a temporary storage for testing
+	tempDir := "/tmp/test_storage"
+	storageConfig := storage.StorageConfig{
+		BasePath: tempDir,
+		PublicURL: "",
+	}
+	storage := storage.NewLocalStorage(storageConfig)
+	assembler := pipeline.NewVideoAssembler(storage)
 
 	textContent := `This is line 1.
 
@@ -158,7 +174,7 @@ This is line 2.
 This is line 3.`
 
 	duration := 9.0 // 3 lines over 9 seconds = 3 seconds per line
-	segments := assembler.parseTextSegments(textContent, duration)
+	segments := assembler.ParseTextSegments(textContent, duration)
 
 	assert.Len(t, segments, 3)
 	

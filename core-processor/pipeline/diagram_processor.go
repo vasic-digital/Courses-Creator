@@ -142,17 +142,17 @@ func (dp *DiagramProcessor) detectDiagrams(content string) []DiagramRequest {
 	var requests []DiagramRequest
 	
 	// Pattern for mermaid diagrams
-	mermaidPattern := regexp.MustCompile("(?si)```mermaid\s*\n(.*?)\n```")
+	mermaidPattern := regexp.MustCompile("(?si)```mermaid\\s*\\n(.*?)\\n```")
 	matches := mermaidPattern.FindAllStringSubmatch(content, -1)
 	
-	for i, match := range matches {
-		if len(match) > 1 {
-			diagramType, title := dp.analyzeMermaidDiagram(match[1])
+	for i := range matches {
+		if len(matches[i]) > 1 {
+			diagramType, title := dp.analyzeMermaidDiagram(matches[i][1])
 			
 			requests = append(requests, DiagramRequest{
 				Type:    diagramType,
 				Title:   title,
-				Content: match[1],
+				Content: matches[i][1],
 				Style:   "mermaid",
 				Options: map[string]interface{}{
 					"format": "png",
@@ -163,18 +163,18 @@ func (dp *DiagramProcessor) detectDiagrams(content string) []DiagramRequest {
 	}
 	
 	// Pattern for text-based diagram descriptions
-	textDiagramPattern := regexp.MustCompile("(?si)#{1,6}\s*(.*?[Dd]iagram.*?):\s*\n(.*?)(?=\n#{1,6}|\n\n|\Z)")
+	textDiagramPattern := regexp.MustCompile("(?si)#{1,6}\\s*(.*?[Dd]iagram.*?):\\s*\\n(.*?)(?=\\n#{1,6}|\\n\\n|\\Z)")
 	textMatches := textDiagramPattern.FindAllStringSubmatch(content, -1)
 	
-	for i, match := range textMatches {
-		if len(match) > 2 {
-			diagramType := dp.inferDiagramType(match[1] + " " + match[2])
-			title := strings.TrimSpace(match[1])
+	for i := range textMatches {
+		if len(textMatches[i]) > 2 {
+			diagramType := dp.inferDiagramType(textMatches[i][1] + " " + textMatches[i][2])
+			title := strings.TrimSpace(textMatches[i][1])
 			
 			requests = append(requests, DiagramRequest{
 				Type:    diagramType,
 				Title:   title,
-				Content: strings.TrimSpace(match[2]),
+				Content: strings.TrimSpace(textMatches[i][2]),
 				Style:   "generated",
 				Options: map[string]interface{}{
 					"format": "png",
@@ -422,7 +422,7 @@ func (dp *DiagramProcessor) drawFlowchartShapes(img *image.RGBA, titleColor colo
 		dp.drawRectangle(img, pos[0], pos[1], 300, 80, dp.getColorForIndex(i))
 		if i < len(positions)-1 {
 			nextPos := positions[i+1]
-			dp.drawArrow(img, pos[0]+150, pos[1]+80, nextPos[0]+150, nextPos[1])
+			dp.drawArrow(img, pos[0]+150, pos[1]+80, nextPos[0]+150, nextPos[1], dp.getColorForIndex(i))
 		}
 	}
 }
@@ -536,7 +536,7 @@ func (dp *DiagramProcessor) drawArrow(img *image.RGBA, x1, y1, x2, y2 int, c col
 	
 	// Draw arrowhead
 	angle := math.Atan2(float64(y2-y1), float64(x2-x1))
-	arrowLength := 10
+	arrowLength := float64(10)
 	arrowAngle := 0.5
 	
 	// Calculate arrowhead points
@@ -582,10 +582,10 @@ func (dp *DiagramProcessor) generateFlowchartFromContent(img *image.RGBA, conten
 		// Draw arrows
 		if row < elementsPerColumn-1 && i+1 < elementCount {
 			nextY := 100 + (row+1)*120
-			dp.drawArrow(img, x+150, y+80, x+150, nextY)
+			dp.drawArrow(img, x+150, y+80, x+150, nextY, dp.getColorForIndex(0))
 		} else if row == elementsPerColumn-1 && col < cols-1 && i+1 < elementCount {
 			nextX := 200 + (col+1)*400
-			dp.drawArrow(img, x+150, y+40, nextX, y+40)
+			dp.drawArrow(img, x+150, y+40, nextX, y+40, dp.getColorForIndex(0))
 		}
 	}
 }
@@ -599,7 +599,7 @@ func (dp *DiagramProcessor) generateMindMapFromContent(img *image.RGBA, content 
 	branches := min(elementCount-1, 12)
 	for i := 0; i < branches; i++ {
 		angle := float64(i) * 2 * math.Pi / float64(branches)
-		radius := 300 + (i%3)*50 // Vary radius for visual interest
+		radius := float64(300 + (i%3)*50) // Vary radius for visual interest
 		endX := centerX + int(radius*math.Cos(angle))
 		endY := centerY + int(radius*math.Sin(angle))
 		
