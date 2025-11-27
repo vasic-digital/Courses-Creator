@@ -163,8 +163,25 @@ func (dp *DiagramProcessor) detectDiagrams(content string) []DiagramRequest {
 	}
 	
 	// Pattern for text-based diagram descriptions
-	textDiagramPattern := regexp.MustCompile("(?si)#{1,6}\\s*(.*?[Dd]iagram.*?):\\s*\\n(.*?)(?=\\n#{1,6}|\\n\\n|\\Z)")
+	textDiagramPattern := regexp.MustCompile(`#{1,6}\s*(.*?[Dd]iagram.*?):\s*\n(.*?)`)
 	textMatches := textDiagramPattern.FindAllStringSubmatch(content, -1)
+	
+	// Filter matches to ensure proper boundaries
+	var filteredMatches [][]string
+	for _, match := range textMatches {
+		if len(match) > 2 {
+			// Check if this is properly bounded by headers or document end
+			startIndex := strings.Index(content, match[0])
+			if startIndex >= 0 {
+				// Look for next header or document end
+				restOfContent := content[startIndex+len(match[0]):]
+				nextHeaderIndex := strings.Index(restOfContent, "\n#")
+				if nextHeaderIndex == -1 || nextHeaderIndex > 50 {
+					filteredMatches = append(filteredMatches, match)
+				}
+			}
+		}
+	}
 	
 	for i := range textMatches {
 		if len(textMatches[i]) > 2 {

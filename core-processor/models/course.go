@@ -42,6 +42,7 @@ type Lesson struct {
 	Content             string               `json:"content"`
 	VideoURL            *string              `json:"video_url,omitempty"`
 	AudioURL            *string              `json:"audio_url,omitempty"`
+	Diagrams            []Diagram            `json:"diagrams,omitempty"`
 	Subtitles           []Subtitle           `json:"subtitles"`
 	InteractiveElements []InteractiveElement `json:"interactive_elements"`
 	Duration            int                  `json:"duration"`

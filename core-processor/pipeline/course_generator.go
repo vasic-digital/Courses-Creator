@@ -14,11 +14,12 @@ import (
 
 // CourseGenerator orchestrates the entire course generation process
 type CourseGenerator struct {
-	markdownParser *utils.MarkdownParser
-	ttsProcessor   *TTSProcessor
-	videoAssembler *VideoAssembler
-	contentGen     *llm.CourseContentGenerator
-	storage        *storage.StorageManager
+	markdownParser  *utils.MarkdownParser
+	ttsProcessor    *TTSProcessor
+	videoAssembler  *VideoAssembler
+	diagramProcessor *DiagramProcessor
+	contentGen      *llm.CourseContentGenerator
+	storage         *storage.StorageManager
 }
 
 // NewCourseGenerator creates a new course generator
@@ -50,11 +51,12 @@ func NewCourseGenerator() *CourseGenerator {
 	}
 	
 	return &CourseGenerator{
-		markdownParser: utils.NewMarkdownParser(),
-		ttsProcessor:   NewTTSProcessor(),
-		videoAssembler: NewVideoAssembler(storageManager.DefaultProvider()),
-		contentGen:     llm.NewCourseContentGenerator(),
-		storage:        storageManager,
+		markdownParser:  utils.NewMarkdownParser(),
+		ttsProcessor:    NewTTSProcessor(),
+		videoAssembler:  NewVideoAssembler(storageManager.DefaultProvider()),
+		diagramProcessor: NewDiagramProcessor(storageManager.DefaultProvider()),
+		contentGen:      llm.NewCourseContentGenerator(),
+		storage:         storageManager,
 	}
 }
 
@@ -171,6 +173,13 @@ func (cg *CourseGenerator) generateLesson(ctx context.Context, section models.Pa
 		return nil, fmt.Errorf("failed to generate audio: %w", err)
 	}
 
+	// Process diagrams in the content
+	diagrams, err := cg.diagramProcessor.ProcessDiagrams(ctx, enhancedContent, options)
+	if err != nil {
+		fmt.Printf("Failed to process diagrams: %v\n", err)
+		diagrams = []models.Diagram{} // Use empty slice as fallback
+	}
+
 	// Generate lesson ID
 	lessonID := fmt.Sprintf("lesson_%d", utils.HashString(section.Content))
 	
@@ -187,6 +196,7 @@ func (cg *CourseGenerator) generateLesson(ctx context.Context, section models.Pa
 		Content:             enhancedContent,
 		VideoURL:            &videoPath,
 		AudioURL:            &audioPath,
+		Diagrams:            diagrams,
 		InteractiveElements:  parseInteractiveElements(interactiveElements),
 		Order:               section.Order,
 	}

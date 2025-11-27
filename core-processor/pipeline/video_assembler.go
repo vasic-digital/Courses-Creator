@@ -49,8 +49,9 @@ const (
 
 // VideoAssembler handles video assembly from audio and visual elements
 type VideoAssembler struct {
-	Config  VideoConfig
-	storage storage.StorageInterface
+	Config           VideoConfig
+	storage          storage.StorageInterface
+	backgroundGen    *BackgroundGenerator
 }
 
 // NewVideoAssembler creates a new video assembler
@@ -79,18 +80,21 @@ func NewVideoAssembler(storage storage.StorageInterface) *VideoAssembler {
 	utils.EnsureDir(config.TempDir)
 
 	return &VideoAssembler{
-		Config:  config,
-		storage: storage,
+		Config:        config,
+		storage:       storage,
+		backgroundGen: NewBackgroundGenerator(storage),
 	}
 }
 
 // NewVideoAssemblerWithConfig creates a new video assembler with custom config
-func NewVideoAssemblerWithConfig(config VideoConfig) *VideoAssembler {
+func NewVideoAssemblerWithConfig(config VideoConfig, storage storage.StorageInterface) *VideoAssembler {
 	utils.EnsureDir(config.OutputDir)
 	utils.EnsureDir(config.TempDir)
 	
 	return &VideoAssembler{
-		Config: config,
+		Config:        config,
+		storage:       storage,
+		backgroundGen: NewBackgroundGenerator(storage),
 	}
 }
 
@@ -155,153 +159,10 @@ func (va *VideoAssembler) CreateVideo(
 	return storagePath, nil
 }
 
-// generateBackground creates a dynamic background
+// generateBackground creates a dynamic background using BackgroundGenerator
 func (va *VideoAssembler) generateBackground(ctx context.Context, textContent string, duration float64, options models.ProcessingOptions) (string, error) {
-	backgroundPath := filepath.Join(va.Config.TempDir, fmt.Sprintf("bg_%d.png", utils.HashString(textContent)))
-
-	// Choose background style based on quality and preferences
-	var style BackgroundStyle
-	switch options.Quality {
-	case "high":
-		style = BackgroundAnimated
-	default:
-		style = BackgroundGradient
-	}
-
-	switch style {
-	case BackgroundSolidColor:
-		return va.generateSolidBackground(ctx, backgroundPath, textContent)
-	case BackgroundGradient:
-		return va.generateGradientBackground(ctx, backgroundPath, textContent, duration)
-	case BackgroundPattern:
-		return va.generatePatternBackground(ctx, backgroundPath, textContent)
-	case BackgroundAnimated:
-		return va.generateAnimatedBackground(ctx, backgroundPath, textContent, duration)
-	default:
-		return va.generateSolidBackground(ctx, backgroundPath, textContent)
-	}
-}
-
-// generateSolidBackground creates a solid color background
-func (va *VideoAssembler) generateSolidBackground(ctx context.Context, outputPath, textContent string) (string, error) {
-	colors := []string{
-		"4A90E2", // Blue
-		"50C878", // Green
-		"9B59B6", // Purple
-		"F39C12", // Orange
-		"E74C3C", // Red
-		"1ABC9C", // Turquoise
-		"34495E", // Dark Blue
-		"E67E22", // Carrot
-	}
-
-	// Choose color based on text hash
-	colorIndex := int(utils.HashString(textContent)) % len(colors)
-	color := colors[colorIndex]
-
-	cmd := utils.ExecuteCommand(ctx, va.Config.FFmpegPath,
-		"-f", "lavfi",
-		"-i", fmt.Sprintf("color=c=%s:s=%dx%d:d=1", color, va.Config.Quality.Width, va.Config.Quality.Height),
-		"-frames:v", "1",
-		"-q:v", "1",
-		outputPath,
-	)
-
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("failed to generate solid background: %w", err)
-	}
-
-	return outputPath, nil
-}
-
-// generateGradientBackground creates a gradient background
-func (va *VideoAssembler) generateGradientBackground(ctx context.Context, outputPath, textContent string, duration float64) (string, error) {
-	// Create gradient filter
-	filter := fmt.Sprintf("color=red:s=%dx%d[d1];color=blue:s=%dx%d[d2];[d1][d2]scale2ref[d2][d1];[d2][d1]blend=all_mode=multiply",
-		va.Config.Quality.Width, va.Config.Quality.Height,
-		va.Config.Quality.Width, va.Config.Quality.Height,
-	)
-
-	cmd := utils.ExecuteCommand(ctx, va.Config.FFmpegPath,
-		"-f", "lavfi",
-		"-i", filter,
-		"-frames:v", "1",
-		"-q:v", "1",
-		outputPath,
-	)
-
-	if err := cmd.Run(); err != nil {
-		// Fallback to solid background
-		return va.generateSolidBackground(ctx, outputPath, textContent)
-	}
-
-	return outputPath, nil
-}
-
-// generatePatternBackground creates a pattern background
-func (va *VideoAssembler) generatePatternBackground(ctx context.Context, outputPath, textContent string) (string, error) {
-	// Create a pattern using FFmpeg's geq filter
-	filter := fmt.Sprintf("geq=lum='p(X,Y)':cb='p(X,Y)':cr='p(X,Y)':s=%dx%d",
-		va.Config.Quality.Width, va.Config.Quality.Height)
-
-	cmd := utils.ExecuteCommand(ctx, va.Config.FFmpegPath,
-		"-f", "lavfi",
-		"-i", filter,
-		"-frames:v", "1",
-		"-q:v", "1",
-		outputPath,
-	)
-
-	if err := cmd.Run(); err != nil {
-		// Fallback to solid background
-		return va.generateSolidBackground(ctx, outputPath, textContent)
-	}
-
-	return outputPath, nil
-}
-
-// generateAnimatedBackground creates an animated background
-func (va *VideoAssembler) generateAnimatedBackground(ctx context.Context, outputPath, textContent string, duration float64) (string, error) {
-	// Create animated gradient
-	animOutput := filepath.Join(va.Config.TempDir, fmt.Sprintf("anim_bg_%d.mp4", utils.HashString(textContent)))
-	defer os.Remove(animOutput)
-
-	// Create animated gradient filter
-	filter := fmt.Sprintf("color=red:s=%dx%d:d=%.1f[c1];color=blue:s=%dx%d:d=%.1f[c2];[c1][c2]blend=all_mode=multiply",
-		va.Config.Quality.Width, va.Config.Quality.Height, duration,
-		va.Config.Quality.Width, va.Config.Quality.Height, duration,
-	)
-
-	cmd := utils.ExecuteCommand(ctx, va.Config.FFmpegPath,
-		"-f", "lavfi",
-		"-i", filter,
-		"-c:v", "libx264",
-		"-preset", "ultrafast",
-		"-crf", "23",
-		"-pix_fmt", "yuv420p",
-		"-t", fmt.Sprintf("%.1f", duration),
-		animOutput,
-	)
-
-	if err := cmd.Run(); err != nil {
-		// Fallback to static background
-		return va.generateGradientBackground(ctx, outputPath, textContent, duration)
-	}
-
-	// Extract first frame as background
-	frameCmd := utils.ExecuteCommand(ctx, va.Config.FFmpegPath,
-		"-i", animOutput,
-		"-ss", "0.1",
-		"-frames:v", "1",
-		"-q:v", "1",
-		outputPath,
-	)
-
-	if err := frameCmd.Run(); err != nil {
-		return va.generateGradientBackground(ctx, outputPath, textContent, duration)
-	}
-
-	return outputPath, nil
+	// Use the BackgroundGenerator to create background
+	return va.backgroundGen.GenerateBackground(ctx, textContent, options)
 }
 
 // ParseTextSegments parses text content into timed segments (exported for testing)
