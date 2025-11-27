@@ -1,10 +1,15 @@
 package api
 
 import (
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 
+	"github.com/course-creator/core-processor/models"
+	"github.com/course-creator/core-processor/repository"
 	"github.com/gin-gonic/gin"
 )
 
@@ -87,11 +92,64 @@ func (s *CourseAPIService) GenerateCourseAPI(c *gin.Context) {
 	}
 
 	// Create a temporary file for the markdown
-	// For now, we'll return a mock response
-	// TODO: Implement actual markdown processing
+	tempDir, err := ioutil.TempDir("", "course-gen")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create temp directory"})
+		return
+	}
 	
+	markdownFile := filepath.Join(tempDir, "content.md")
+	if err := ioutil.WriteFile(markdownFile, []byte(req.Markdown), 0644); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write markdown file"})
+		return
+	}
+	
+	outputDir := filepath.Join(tempDir, "output")
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create output directory"})
+		return
+	}
+
+	// Get user ID from context (for future use in user-specific job tracking)
+	_, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	// Create a processing job
+	jobOptions := &repository.JobOptions{
+		Voice:           req.Options.Voice,
+		BackgroundMusic: req.Options.BackgroundMusic,
+		Languages:       req.Options.Languages,
+		Quality:         req.Options.Quality,
+	}
+
+	optionsJSON, err := repository.SerializeJobOptions(jobOptions)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to serialize options: " + err.Error()})
+		return
+	}
+
+	job := &models.ProcessingJobDB{
+		InputPath:  markdownFile,
+		OutputPath: &outputDir,
+		Options:    optionsJSON,
+		Status:     "pending",
+		Progress:   0,
+	}
+
+	job, err = s.handler.jobRepo.CreateJob(job)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create processing job: " + err.Error()})
+		return
+	}
+
+	// Start async processing
+	go s.handler.processCourseAsync(job.ID, markdownFile, outputDir, req.Options)
+
 	response := GenerateCourseResponse{
-		JobID:   "mock-job-id",
+		JobID:   job.ID,
 		Status:  "pending",
 		Message: "Course generation started",
 	}

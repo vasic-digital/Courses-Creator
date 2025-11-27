@@ -153,9 +153,9 @@ func startServer() {
 		// Course routes
 		courseGroup := protected.Group("/courses")
 		{
-			courseGroup.POST("/generate", courseHandler.GenerateCourse)
-			courseGroup.GET("", courseHandler.ListCourses)
-			courseGroup.GET("/:id", courseHandler.GetCourse)
+			courseGroup.POST("/generate", courseAPIService.GenerateCourseAPI)
+			courseGroup.GET("", courseAPIService.GetCoursesAPI)
+			courseGroup.GET("/:id", courseAPIService.GetCourseAPI)
 		}
 
 		// Job routes
