@@ -77,6 +77,14 @@ func startServer() {
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 	r.Use(metrics.Middleware())
+	
+	// Add a middleware to log all requests
+	r.Use(func(c *gin.Context) {
+		path := c.Request.URL.Path
+		method := c.Request.Method
+		fmt.Printf("Request: %s %s\n", method, path)
+		c.Next()
+	})
 
 	// Initialize authentication
 	authMiddleware := middleware.NewAuthMiddleware()
@@ -127,6 +135,7 @@ func startServer() {
 		courseAPIService.RegisterCourseAPIRoutes(publicCourses)
 		
 		// Authentication routes
+		fmt.Printf("About to register auth routes...\n")
 		authGroup := v1.Group("/auth")
 		{
 			authGroup.POST("/register", authHandler.Register)
@@ -134,6 +143,7 @@ func startServer() {
 			authGroup.POST("/refresh", authHandler.RefreshToken)
 			authGroup.GET("/types", jobHandler.GetJobTypes)
 		}
+		fmt.Printf("Auth routes registered\n")
 	}
 
 	// Protected API routes (auth required)

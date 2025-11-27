@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import { authAPI } from './services/api';
+import LoginPage from './components/LoginPage';
+import CourseListPage from './components/CourseListPage';
+import './App.css';
 
 interface ProcessingOptions {
   voice?: string;
@@ -9,6 +12,8 @@ interface ProcessingOptions {
 }
 
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState<'courses' | 'creator'>('courses');
   const [markdownFile, setMarkdownFile] = useState<string>('');
   const [outputDir, setOutputDir] = useState<string>('');
   const [markdownContent, setMarkdownContent] = useState<string>('');
@@ -20,6 +25,29 @@ const App: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
   const [result, setResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      // Verify token is valid by fetching current user
+      authAPI.getCurrentUser()
+        .then(() => setIsAuthenticated(true))
+        .catch(() => {
+          localStorage.removeItem('auth_token');
+          setIsAuthenticated(false);
+        });
+    }
+  }, []);
+
+  const handleAuthSuccess = () => {
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    authAPI.logout();
+    setIsAuthenticated(false);
+    setCurrentPage('courses');
+  };
 
   const selectMarkdownFile = async () => {
     try {
@@ -61,18 +89,16 @@ const App: React.FC = () => {
         setProgress(prev => Math.min(prev + 10, 90));
       }, 500);
 
-      const response = await axios.post('http://localhost:8080/api/v1/courses/generate', {
-        markdown_path: markdownFile,
-        output_dir: outputDir,
-        options: options
-      });
+      // Import dynamically to avoid issues when not authenticated
+      const { courseAPI } = await import('./services/api');
+      const response = await courseAPI.generateCourse(markdownFile, outputDir, options);
 
       clearInterval(progressInterval);
       setProgress(100);
 
       setResult({
         type: 'success',
-        message: `Course generated successfully! Output: ${response.data.output_path}`
+        message: `Course generated successfully! Job ID: ${response.data.job_id || 'unknown'}`
       });
     } catch (error: any) {
       setResult({
@@ -84,99 +110,132 @@ const App: React.FC = () => {
     }
   };
 
+  if (!isAuthenticated) {
+    return <LoginPage onAuthSuccess={handleAuthSuccess} />;
+  }
+
   return (
-    <div className="container">
-      <h1>Course Creator</h1>
+    <div className="app-container">
+      <nav className="navbar">
+        <div className="nav-brand">Course Creator</div>
+        <div className="nav-links">
+          <button 
+            className={currentPage === 'courses' ? 'nav-link active' : 'nav-link'}
+            onClick={() => setCurrentPage('courses')}
+          >
+            My Courses
+          </button>
+          <button 
+            className={currentPage === 'creator' ? 'nav-link active' : 'nav-link'}
+            onClick={() => setCurrentPage('creator')}
+          >
+            Create Course
+          </button>
+          <button className="nav-link logout" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
+      </nav>
 
-      <div className="form-group">
-        <label>Markdown File:</label>
-        <button onClick={selectMarkdownFile} disabled={isProcessing}>
-          {markdownFile ? 'Change File' : 'Select Markdown File'}
-        </button>
-        {markdownFile && (
-          <div className="file-info">
-            Selected: {markdownFile.split('/').pop()}
+      <main className="main-content">
+        {currentPage === 'courses' ? (
+          <CourseListPage isAuthenticated={isAuthenticated} />
+        ) : (
+          <div className="creator-container">
+            <h1>Create New Course</h1>
+
+            <div className="form-group">
+              <label>Markdown File:</label>
+              <button onClick={selectMarkdownFile} disabled={isProcessing}>
+                {markdownFile ? 'Change File' : 'Select Markdown File'}
+              </button>
+              {markdownFile && (
+                <div className="file-info">
+                  Selected: {markdownFile.split('/').pop()}
+                </div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label>Output Directory:</label>
+              <button onClick={selectOutputDirectory} disabled={isProcessing}>
+                {outputDir ? 'Change Directory' : 'Select Output Directory'}
+              </button>
+              {outputDir && (
+                <div className="file-info">
+                  Selected: {outputDir}
+                </div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label>Markdown Preview:</label>
+              <textarea
+                value={markdownContent}
+                onChange={(e) => setMarkdownContent(e.target.value)}
+                placeholder="Your markdown content will appear here..."
+                disabled={isProcessing}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Voice:</label>
+              <select
+                value={options.voice || ''}
+                onChange={(e) => setOptions({ ...options, voice: e.target.value || undefined })}
+                disabled={isProcessing}
+              >
+                <option value="">Default</option>
+                <option value="bark">Bark</option>
+                <option value="speecht5">SpeechT5</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={options.backgroundMusic}
+                  onChange={(e) => setOptions({ ...options, backgroundMusic: e.target.checked })}
+                  disabled={isProcessing}
+                />
+                Background Music
+              </label>
+            </div>
+
+            <div className="form-group">
+              <label>Quality:</label>
+              <select
+                value={options.quality}
+                onChange={(e) => setOptions({ ...options, quality: e.target.value as 'standard' | 'high' })}
+                disabled={isProcessing}
+              >
+                <option value="standard">Standard</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+
+            <button onClick={generateCourse} disabled={isProcessing || !markdownFile || !outputDir}>
+              {isProcessing ? 'Generating Course...' : 'Generate Course'}
+            </button>
+
+            {isProcessing && (
+              <div className="progress">
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+                </div>
+                <p>Processing... {progress}%</p>
+              </div>
+            )}
+
+            {result && (
+              <div className={`result ${result.type}`}>
+                <strong>{result.type === 'success' ? 'Success!' : 'Error:'}</strong> {result.message}
+              </div>
+            )}
           </div>
         )}
-      </div>
-
-      <div className="form-group">
-        <label>Output Directory:</label>
-        <button onClick={selectOutputDirectory} disabled={isProcessing}>
-          {outputDir ? 'Change Directory' : 'Select Output Directory'}
-        </button>
-        {outputDir && (
-          <div className="file-info">
-            Selected: {outputDir}
-          </div>
-        )}
-      </div>
-
-      <div className="form-group">
-        <label>Markdown Preview:</label>
-        <textarea
-          value={markdownContent}
-          onChange={(e) => setMarkdownContent(e.target.value)}
-          placeholder="Your markdown content will appear here..."
-          disabled={isProcessing}
-        />
-      </div>
-
-      <div className="form-group">
-        <label>Voice:</label>
-        <select
-          value={options.voice || ''}
-          onChange={(e) => setOptions({ ...options, voice: e.target.value || undefined })}
-          disabled={isProcessing}
-        >
-          <option value="">Default</option>
-          <option value="bark">Bark</option>
-          <option value="speecht5">SpeechT5</option>
-        </select>
-      </div>
-
-      <div className="form-group">
-        <label>
-          <input
-            type="checkbox"
-            checked={options.backgroundMusic}
-            onChange={(e) => setOptions({ ...options, backgroundMusic: e.target.checked })}
-            disabled={isProcessing}
-          />
-          Background Music
-        </label>
-      </div>
-
-      <div className="form-group">
-        <label>Quality:</label>
-        <select
-          value={options.quality}
-          onChange={(e) => setOptions({ ...options, quality: e.target.value as 'standard' | 'high' })}
-          disabled={isProcessing}
-        >
-          <option value="standard">Standard</option>
-          <option value="high">High</option>
-        </select>
-      </div>
-
-      <button onClick={generateCourse} disabled={isProcessing || !markdownFile || !outputDir}>
-        {isProcessing ? 'Generating Course...' : 'Generate Course'}
-      </button>
-
-      {isProcessing && (
-        <div className="progress">
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${progress}%` }}></div>
-          </div>
-          <p>Processing... {progress}%</p>
-        </div>
-      )}
-
-      {result && (
-        <div className={`result ${result.type}`}>
-          <strong>{result.type === 'success' ? 'Success!' : 'Error:'}</strong> {result.message}
-        </div>
-      )}
+      </main>
     </div>
   );
 };

@@ -58,7 +58,6 @@ const CourseListPage: React.FC<CourseListProps> = ({ isAuthenticated }) => {
         <p>
           {isAuthenticated 
             ? "Create your first course to get started." 
-            ? "Public courses will appear here when available."
             : "Public courses will appear here when available."
           }
         </p>
