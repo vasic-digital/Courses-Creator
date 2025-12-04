@@ -52,6 +52,16 @@ type AuthResponse struct {
 
 // Register registers a new user
 func (s *AuthService) Register(ctx context.Context, req *RegisterRequest) (*AuthResponse, error) {
+	// Validate login input for security issues
+	if err := ValidateLoginInput(req.Email, req.Password); err != nil {
+		return nil, fmt.Errorf("invalid input: %w", err)
+	}
+	
+	// Validate password strength
+	if err := ValidatePasswordStrength(req.Password); err != nil {
+		return nil, fmt.Errorf("weak password: %w", err)
+	}
+	
 	// Check if user already exists
 	var existingUser models.UserDB
 	if err := s.db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
@@ -117,6 +127,11 @@ func (s *AuthService) Register(ctx context.Context, req *RegisterRequest) (*Auth
 
 // Login authenticates a user
 func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*AuthResponse, error) {
+	// Validate login input for security issues
+	if err := ValidateLoginInput(req.Email, req.Password); err != nil {
+		return nil, fmt.Errorf("invalid input: %w", err)
+	}
+	
 	// Find user
 	var user models.UserDB
 	if err := s.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
@@ -239,6 +254,11 @@ func (s *AuthService) UpdateUser(ctx context.Context, userID string, updates map
 
 // UpdatePassword updates user password
 func (s *AuthService) UpdatePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
+	// Validate new password strength
+	if err := ValidatePasswordStrength(newPassword); err != nil {
+		return fmt.Errorf("weak password: %w", err)
+	}
+	
 	var user models.UserDB
 	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
 		return fmt.Errorf("failed to find user: %w", err)

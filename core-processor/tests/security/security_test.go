@@ -1,12 +1,7 @@
 package security_test
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -15,17 +10,10 @@ import (
 	"github.com/course-creator/core-processor/cmd"
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/services"
-	"github.com/gorilla/mux"
 )
 
 func TestSQLInjection(t *testing.T) {
-	// Test SQL injection attempts on various endpoints
-	router := mux.NewRouter()
-	authService := services.NewAuthService()
-	
-	// Mock database for testing
-	// In real implementation, this would be connected to test DB
-	
+	// Test SQL injection attempts on login input
 	testCases := []struct {
 		name        string
 		input       string
@@ -60,20 +48,14 @@ func TestSQLInjection(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Test login endpoint with malicious input
+			// Test login validation with malicious input
 			loginData := map[string]string{
 				"email":    tc.input,
 				"password": "password123",
 			}
 			
-			jsonData, _ := json.Marshal(loginData)
-			req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(jsonData))
-			req.Header.Set("Content-Type", "application/json")
-			w := httptest.NewRecorder()
-
-			// This would be the actual handler in implementation
-			// For now, we'll test the validation logic directly
-			err := authService.ValidateLoginInput(tc.input, "password123")
+			// Validate email input directly
+			err := services.ValidateLoginInput(loginData["email"], loginData["password"])
 			
 			if tc.shouldBlock && err == nil {
 				t.Errorf("Expected SQL injection to be blocked but was allowed: %s", tc.input)
@@ -141,8 +123,6 @@ func TestXSSPrevention(t *testing.T) {
 }
 
 func TestAuthenticationSecurity(t *testing.T) {
-	authService := services.NewAuthService()
-
 	testCases := []struct {
 		name        string
 		email       string
@@ -195,7 +175,7 @@ func TestAuthenticationSecurity(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := authService.ValidatePasswordStrength(tc.password)
+			err := services.ValidatePasswordStrength(tc.password)
 			
 			if tc.expectError && err == nil {
 				t.Errorf("Expected weak password to be rejected but was accepted: %s", tc.password)
@@ -210,9 +190,6 @@ func TestAuthenticationSecurity(t *testing.T) {
 
 func TestRateLimiting(t *testing.T) {
 	// Test rate limiting on sensitive endpoints
-	router := mux.NewRouter()
-	
-	// Mock rate limiter
 	rateLimiter := services.NewRateLimiter(5, time.Minute) // 5 requests per minute
 	
 	testCases := []struct {
@@ -239,23 +216,29 @@ func TestRateLimiting(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ipAddress := "192.168.1.1"
+			// Create a unique IP for each test to avoid interference
+			ipAddress := fmt.Sprintf("192.168.1.%d", 1+len(t.Name())%10)
 			
 			for i := 0; i < tc.numRequests; i++ {
 				allowed := rateLimiter.Allow(ipAddress)
 				
-				if i < tc.numRequests-1 {
-					// Should allow all but potentially the last request
-					if !allowed {
-						t.Errorf("Rate limiter blocked request %d unexpectedly", i+1)
+				if tc.shouldLimit {
+					// For tests that should hit the limit
+					if i < 5 {
+						// First 5 requests should be allowed
+						if !allowed {
+							t.Errorf("Rate limiter blocked request %d unexpectedly", i+1)
+						}
+					} else {
+						// Requests 6+ should be blocked
+						if allowed {
+							t.Errorf("Rate limiter should have blocked request %d but allowed it", i+1)
+						}
 					}
 				} else {
-					// Last request might be blocked
-					if tc.shouldLimit && allowed {
-						t.Errorf("Rate limiter should have blocked request %d but allowed it", i+1)
-					}
-					if !tc.shouldLimit && !allowed {
-						t.Errorf("Rate limiter should have allowed request %d but blocked it", i+1)
+					// For tests that should not hit the limit
+					if !allowed {
+						t.Errorf("Rate limiter blocked request %d unexpectedly", i+1)
 					}
 				}
 			}

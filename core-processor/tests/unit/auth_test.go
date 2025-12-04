@@ -129,7 +129,7 @@ func TestAuthService(t *testing.T) {
 			Email:     "newuser@example.com",
 			FirstName: "New",
 			LastName:  "User",
-			Password:  "securePassword123",
+			Password:  "SecureP@ssw0rd123!",
 		}
 		
 		// Register user
@@ -170,7 +170,7 @@ func TestAuthService(t *testing.T) {
 			Email:     "newuser@example.com", // Same email as above
 			FirstName: "Another",
 			LastName:  "User",
-			Password:  "anotherPassword123",
+			Password:  "AnotherP@ssw0rd123!",
 		}
 		
 		// Should fail with duplicate email
@@ -183,7 +183,7 @@ func TestAuthService(t *testing.T) {
 	t.Run("Login User", func(t *testing.T) {
 		req := &services.LoginRequest{
 			Email:    "newuser@example.com",
-			Password: "securePassword123",
+			Password: "SecureP@ssw0rd123!",
 		}
 		
 		// Login user
@@ -198,7 +198,7 @@ func TestAuthService(t *testing.T) {
 	t.Run("Login Invalid Credentials", func(t *testing.T) {
 		req := &services.LoginRequest{
 			Email:    "newuser@example.com",
-			Password: "wrongPassword",
+			Password: "WrongP@ssw0rd123!",
 		}
 		
 		// Should fail with invalid credentials
@@ -267,19 +267,19 @@ func TestAuthService(t *testing.T) {
 		require.NoError(t, err)
 		
 		// Update password
-		err = authService.UpdatePassword(context.Background(), userDB.ID, "securePassword123", "newSecurePassword456")
+		err = authService.UpdatePassword(context.Background(), userDB.ID, "SecureP@ssw0rd123!", "NewSecureP@ssw0rd456!")
 		require.NoError(t, err)
 		
 		// Verify old password no longer works
 		loginReq := &services.LoginRequest{
 			Email:    "newuser@example.com",
-			Password: "securePassword123",
+			Password: "SecureP@ssw0rd123!",
 		}
 		_, err = authService.Login(context.Background(), loginReq)
 		assert.Error(t, err)
 		
 		// Verify new password works
-		loginReq.Password = "newSecurePassword456"
+		loginReq.Password = "NewSecureP@ssw0rd456!"
 		resp, err := authService.Login(context.Background(), loginReq)
 		require.NoError(t, err)
 		assert.NotNil(t, resp)
@@ -290,7 +290,7 @@ func TestAuthService(t *testing.T) {
 			Email:     "adminuser@example.com",
 			FirstName: "Admin",
 			LastName:  "User",
-			Password:  "adminPassword123",
+			Password:  "AdminP@ssw0rd123!",
 		}
 		
 		// Create admin user

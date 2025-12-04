@@ -10,6 +10,7 @@ import (
 
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/repository"
+	"github.com/course-creator/core-processor/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -80,6 +81,12 @@ func (s *CourseAPIService) GenerateCourseAPI(c *gin.Context) {
 	// Validate input
 	if req.Markdown == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "markdown is required"})
+		return
+	}
+	
+	// Validate markdown content for security issues
+	if !services.ValidateContent(req.Markdown) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid content detected"})
 		return
 	}
 

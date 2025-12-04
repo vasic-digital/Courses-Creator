@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/course-creator/core-processor/api"
@@ -123,4 +124,32 @@ func GenerateCourse(markdownFile, outputDir string) {
 	fmt.Printf("Course generated successfully: %s\n", course.Title)
 	fmt.Printf("Lessons: %d\n", len(course.Lessons))
 	fmt.Printf("Output directory: %s\n", outputDir)
+}
+
+// SetupRouter creates and configures a Gin router for testing
+func SetupRouter() *gin.Engine {
+	// Set Gin mode to test mode
+	gin.SetMode(gin.TestMode)
+	
+	// Create Gin router
+	r := gin.New()
+	
+	// Add middleware
+	r.Use(gin.Recovery())
+	
+	// Add security headers middleware
+	r.Use(func(c *gin.Context) {
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("X-XSS-Protection", "1; mode=block")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Next()
+	})
+	
+	// Add a simple health check route for testing
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	
+	return r
 }

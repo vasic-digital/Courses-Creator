@@ -178,3 +178,10 @@ type Video struct {
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
+
+// UploadFile represents a file upload for security validation
+type UploadFile struct {
+	Filename    string `json:"filename"`
+	Content     []byte `json:"content"`
+	ContentType string `json:"content_type"`
+}
