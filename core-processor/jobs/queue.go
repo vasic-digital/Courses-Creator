@@ -149,6 +149,13 @@ func (jq *JobQueue) Stop() {
 	log.Println("Job queue stopped")
 }
 
+// IsRunning returns whether the job queue is currently running
+func (jq *JobQueue) IsRunning() bool {
+	jq.mu.Lock()
+	defer jq.mu.Unlock()
+	return jq.running
+}
+
 // Enqueue adds a new job to the queue
 func (jq *JobQueue) Enqueue(ctx context.Context, jobType JobType, userID string, payload map[string]interface{}, priority JobPriority) (*Job, error) {
 	job := &Job{

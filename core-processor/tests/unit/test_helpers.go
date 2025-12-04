@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/course-creator/core-processor/models"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -40,6 +41,15 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&models.ProcessingJobDB{},
 	)
 	require.NoError(t, err)
+	
+	// Add BeforeCreate hooks for UUID generation
+	db.Callback().Create().Before("gorm:create").Register("generate_user_id", func(db *gorm.DB) {
+		if user, ok := db.Statement.Dest.(*models.UserDB); ok {
+			if user.ID == "" {
+				user.ID = uuid.New().String()
+			}
+		}
+	})
 	
 	return db
 }
