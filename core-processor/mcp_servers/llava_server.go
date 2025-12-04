@@ -378,8 +378,6 @@ func (s *LLaVAServer) extractText(args map[string]interface{}) (interface{}, err
 		"language":   language,
 		"confidence": 0.8,
 	}, nil
-
-	return s.callLLaVAPython(request)
 }
 
 // detectObjects detects and identifies objects in image

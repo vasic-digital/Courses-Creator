@@ -106,7 +106,7 @@ func createTestConfig() *config.Config {
 			DefaultProvider:   "free",
 			MaxCostPerRequest: 1.0,
 			PrioritizeQuality: false,
-			AllowPaid:        false,
+			AllowPaid:         false,
 		},
 	}
 }
@@ -180,7 +180,7 @@ func testCourseGeneration(t *testing.T, cfg *config.Config, markdownPath, output
 	require.NoError(t, err)
 	parsedCourse, err := parser.Parse(string(content))
 	require.NoError(t, err)
-	
+
 	t.Logf("Course parsed successfully: %s", parsedCourse.Title)
 	t.Logf("Sections: %d", len(parsedCourse.Sections))
 

@@ -13,9 +13,9 @@ import (
 type VideoAccessibilityReport struct {
 	VideoID       string               `json:"video_id"`
 	HasCaptions   bool                 `json:"has_captions"`
-	CaptionsValid  bool                 `json:"captions_valid"`
-	HasTranscript  bool                 `json:"has_transcript"`
-	HasAudio       bool                 `json:"has_audio"`
+	CaptionsValid bool                 `json:"captions_valid"`
+	HasTranscript bool                 `json:"has_transcript"`
+	HasAudio      bool                 `json:"has_audio"`
 	ARating       string               `json:"a_rating"`
 	Violations    []AccessibilityIssue `json:"violations"`
 	Score         float64              `json:"score"`
@@ -23,15 +23,15 @@ type VideoAccessibilityReport struct {
 
 // ContentAccessibilityReport contains accessibility validation for course content
 type ContentAccessibilityReport struct {
-	ContentID       string               `json:"content_id"`
-	ContentType     string               `json:"content_type"`
-	HasAlternativeText bool             `json:"has_alternative_text"`
-	HasHeadings    bool                 `json:"has_headings"`
-	HasARIALabels  bool                 `json:"has_aria_labels"`
-	KeyboardNavigation bool              `json:"keyboard_navigation"`
-	ColorContrast  bool                 `json:"color_contrast"`
-	Violations      []AccessibilityIssue `json:"violations"`
-	Score           float64              `json:"score"`
+	ContentID          string               `json:"content_id"`
+	ContentType        string               `json:"content_type"`
+	HasAlternativeText bool                 `json:"has_alternative_text"`
+	HasHeadings        bool                 `json:"has_headings"`
+	HasARIALabels      bool                 `json:"has_aria_labels"`
+	KeyboardNavigation bool                 `json:"keyboard_navigation"`
+	ColorContrast      bool                 `json:"color_contrast"`
+	Violations         []AccessibilityIssue `json:"violations"`
+	Score              float64              `json:"score"`
 }
 
 // AccessibilityIssue represents an accessibility issue found
@@ -128,7 +128,7 @@ func ValidateVideoAccessibility(video *models.Video) (*VideoAccessibilityReport,
 func ValidateContentAccessibility(content string, contentType string) (*ContentAccessibilityReport, error) {
 	report := &ContentAccessibilityReport{
 		ContentType: contentType,
-		Violations: []AccessibilityIssue{},
+		Violations:  []AccessibilityIssue{},
 	}
 
 	// Check for headings structure
@@ -164,9 +164,9 @@ func ValidateContentAccessibility(content string, contentType string) (*ContentA
 	}
 
 	// Check for ARIA labels
-	report.HasARIALabels = strings.Contains(content, "aria-label=") || 
-							strings.Contains(content, "aria-labelledby=")
-	if !report.HasARIALabels && 
+	report.HasARIALabels = strings.Contains(content, "aria-label=") ||
+		strings.Contains(content, "aria-labelledby=")
+	if !report.HasARIALabels &&
 		(strings.Contains(content, "<button>") || strings.Contains(content, "<input")) {
 		report.Violations = append(report.Violations, AccessibilityIssue{
 			Type:        "missing_aria_labels",
@@ -190,7 +190,7 @@ func ValidateContentAccessibility(content string, contentType string) (*ContentA
 
 	// Check for keyboard navigation
 	report.KeyboardNavigation = strings.Contains(content, "tabindex=") || strings.Contains(content, "href=")
-	if !report.KeyboardNavigation && 
+	if !report.KeyboardNavigation &&
 		(strings.Contains(content, "<a") || strings.Contains(content, "<button")) {
 		report.Violations = append(report.Violations, AccessibilityIssue{
 			Type:        "keyboard_navigation",
@@ -241,22 +241,22 @@ func CountFocusableElements(htmlContent string) (int, error) {
 	// Count elements that can receive focus
 	// Count actual HTML elements, not CSS selectors
 	count := 0
-	
+
 	// Count buttons
 	count += strings.Count(strings.ToLower(htmlContent), "<button")
-	
+
 	// Count inputs
 	count += strings.Count(strings.ToLower(htmlContent), "<input")
-	
+
 	// Count selects
 	count += strings.Count(strings.ToLower(htmlContent), "<select")
-	
+
 	// Count divs with tabindex
 	divTabIndexPattern := `<div[^>]*tabindex`
 	re := regexp.MustCompile(divTabIndexPattern)
 	matches := re.FindAllString(strings.ToLower(htmlContent), -1)
 	count += len(matches)
-	
+
 	return count, nil
 }
 
@@ -269,7 +269,7 @@ func GetTabOrder(htmlContent string) ([]string, error) {
 	// Simple implementation - return unique elements that can receive focus
 	// In a real implementation, this would parse HTML and return actual tab order
 	elements := []string{
-		"a[href]", "button:not([disabled])", "input:not([disabled])", 
+		"a[href]", "button:not([disabled])", "input:not([disabled])",
 		"select:not([disabled])", "div[tabindex]:not([tabindex=\"-1\"])",
 	}
 
@@ -283,7 +283,7 @@ func GetARIAElements(htmlContent string) (map[string][]string, error) {
 	}
 
 	ariaElements := make(map[string][]string)
-	
+
 	// Find ARIA attributes
 	ariaAttrs := []string{
 		"aria-label", "aria-labelledby", "aria-describedby", "aria-hidden",
@@ -297,13 +297,13 @@ func GetARIAElements(htmlContent string) (map[string][]string, error) {
 			// Look for both forms: aria-current="page" and aria-current=page
 			re := regexp.MustCompile(fmt.Sprintf(`%s[=\s"']([^"\'>\s]*)`, attr))
 			matches := re.FindAllStringSubmatch(htmlContent, -1)
-			
+
 			for _, match := range matches {
 				if len(match) > 1 {
 					ariaElements[attr] = append(ariaElements[attr], match[1])
 				}
 			}
-			
+
 			// Also check for presence without value
 			re2 := regexp.MustCompile(fmt.Sprintf(`%s([^=])`, attr))
 			if re2.MatchString(htmlContent) {
@@ -312,7 +312,7 @@ func GetARIAElements(htmlContent string) (map[string][]string, error) {
 		} else {
 			re := regexp.MustCompile(fmt.Sprintf(`%s="([^"]*)"`, attr))
 			matches := re.FindAllStringSubmatch(htmlContent, -1)
-			
+
 			for _, match := range matches {
 				if len(match) > 1 {
 					ariaElements[attr] = append(ariaElements[attr], match[1])
@@ -375,8 +375,8 @@ func ValidateARIAUsage(htmlContent string) ([]AccessibilityIssue, error) {
 
 // Helper function to check if content contains ARIA labels
 func containsARIALabels(content string) bool {
-	return strings.Contains(content, "aria-label=") || 
-		   strings.Contains(content, "aria-labelledby=")
+	return strings.Contains(content, "aria-label=") ||
+		strings.Contains(content, "aria-labelledby=")
 }
 
 // Helper function to check if content has interactive elements
@@ -384,7 +384,7 @@ func hasInteractiveElements(content string) bool {
 	hasButtons := strings.Contains(content, "<button") || strings.Contains(content, "<input")
 	hasLinks := strings.Contains(content, "<a ")
 	hasButtonLikeDivs := false
-	
+
 	// Look for divs that might be buttons (contain button-like content)
 	if strings.Contains(content, "<div") {
 		// Check if div contains button-like content (symbols)
@@ -396,23 +396,23 @@ func hasInteractiveElements(content string) bool {
 			}
 		}
 	}
-	
+
 	return hasButtons || hasLinks || hasButtonLikeDivs
 }
 
 // Helper functions
 func containsHeadings(content string) bool {
-	return strings.Contains(content, "<h1>") || 
-		   strings.Contains(content, "<h2>") || 
-		   strings.Contains(content, "<h3>")
+	return strings.Contains(content, "<h1>") ||
+		strings.Contains(content, "<h2>") ||
+		strings.Contains(content, "<h3>")
 }
 
 func hasPoorColorContrast(content string) bool {
 	// Check for specific color combinations that have poor contrast
 	return strings.Contains(content, "color: #999999; background-color: #ffffff") ||
-		   strings.Contains(content, "color:gray") || 
-		   strings.Contains(content, "color:#ddd") || 
-		   strings.Contains(content, "background:lightgray")
+		strings.Contains(content, "color:gray") ||
+		strings.Contains(content, "color:#ddd") ||
+		strings.Contains(content, "background:lightgray")
 }
 
 func hasHeadingSkips(content string) bool {
@@ -435,7 +435,7 @@ func hasNonDescriptiveLinks(content string) bool {
 		">here<",
 		">more<",
 	}
-	
+
 	for _, pattern := range nonDescriptivePatterns {
 		if strings.Contains(strings.ToLower(content), pattern) {
 			return true
@@ -449,15 +449,15 @@ func ValidateColorContrast(foreground, background string) (float64, bool) {
 	// Use WCAG 2.1 contrast ratio formula
 	fgLuminance := calculateRelativeLuminance(foreground)
 	bgLuminance := calculateRelativeLuminance(background)
-	
+
 	lighter := max(fgLuminance, bgLuminance)
 	darker := min(fgLuminance, bgLuminance)
-	
+
 	ratio := (lighter + 0.05) / (darker + 0.05)
-	
+
 	// WCAG AA requires at least 4.5:1 for normal text
 	wcagAA := ratio >= 4.5
-	
+
 	return ratio, wcagAA
 }
 
@@ -467,9 +467,9 @@ func calculateRelativeLuminance(color string) float64 {
 	if strings.HasPrefix(color, "#") {
 		color = color[1:]
 	}
-	
+
 	var r, g, b float64
-	
+
 	if len(color) == 3 {
 		// Short form #RGB
 		r = parseHexChar(color[0])
@@ -493,12 +493,12 @@ func calculateRelativeLuminance(color string) float64 {
 			return 0.5 // Default
 		}
 	}
-	
+
 	// Apply gamma correction
 	r = gammaCorrect(r)
 	g = gammaCorrect(g)
 	b = gammaCorrect(b)
-	
+
 	// Calculate relative luminance
 	return 0.2126*r + 0.7152*g + 0.0722*b
 }
@@ -516,9 +516,9 @@ func simplePow(x, y float64) float64 {
 	// Simple approximation for x^2.4
 	if y == 2.4 {
 		// Using x^2.4 = x^2 * x^0.4 as approximation
-		return x*x * simplePow(x, 0.4)
+		return x * x * simplePow(x, 0.4)
 	}
-	
+
 	// For other powers, simple approximation
 	result := 1.0
 	if y < 0 {
@@ -540,7 +540,7 @@ func getColorBrightness(color string) float64 {
 	if strings.HasPrefix(color, "#") {
 		color = color[1:]
 	}
-	
+
 	// Parse hex values
 	r, g, b := 0.0, 0.0, 0.0
 	if len(color) == 3 {
@@ -563,7 +563,7 @@ func getColorBrightness(color string) float64 {
 			return 0.5
 		}
 	}
-	
+
 	// Calculate relative luminance
 	return 0.2126*r + 0.7152*g + 0.0722*b
 }
@@ -585,12 +585,12 @@ func parseHexByte(s string) float64 {
 	if len(s) != 2 {
 		return 0
 	}
-	
+
 	high := s[0]
 	low := s[1]
-	
+
 	var highVal, lowVal int
-	
+
 	if high >= '0' && high <= '9' {
 		highVal = int(high - '0')
 	} else if high >= 'a' && high <= 'f' {
@@ -598,7 +598,7 @@ func parseHexByte(s string) float64 {
 	} else if high >= 'A' && high <= 'F' {
 		highVal = int(high - 'A' + 10)
 	}
-	
+
 	if low >= '0' && low <= '9' {
 		lowVal = int(low - '0')
 	} else if low >= 'a' && low <= 'f' {
@@ -606,8 +606,8 @@ func parseHexByte(s string) float64 {
 	} else if low >= 'A' && low <= 'F' {
 		lowVal = int(low - 'A' + 10)
 	}
-	
-	return float64(highVal*16 + lowVal) / 255.0
+
+	return float64(highVal*16+lowVal) / 255.0
 }
 
 func min(a, b float64) float64 {

@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/course-creator/core-processor/models"
 	storage "github.com/course-creator/core-processor/filestorage"
+	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/pipeline"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,7 @@ func TestVideoAssembler_CreateVideo_Basic(t *testing.T) {
 		PublicURL: "http://localhost:8080/storage",
 	}
 	storageManager, _ := storage.NewStorageManagerWithDefault(storageConfig)
-	
+
 	assembler := pipeline.NewVideoAssembler(storageManager.DefaultProvider())
 
 	// Create temporary files
@@ -58,7 +58,7 @@ func TestVideoAssembler_AddBackgroundMusic_NoFFmpeg(t *testing.T) {
 		PublicURL: "http://localhost:8080/storage",
 	}
 	storageManager, _ := storage.NewStorageManagerWithDefault(storageConfig)
-	
+
 	assembler := pipeline.NewVideoAssembler(storageManager.DefaultProvider())
 
 	videoPath := filepath.Join(tempDir, "test.mp4")

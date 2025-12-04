@@ -107,29 +107,29 @@ type ProcessingResult struct {
 
 // User represents a user in the system
 type User struct {
-	ID        string                 `json:"id"`
-	Email     string                 `json:"email"`
-	Password  string                 `json:"-"` // Never expose password in JSON
-	FirstName string                 `json:"first_name"`
-	LastName  string                 `json:"last_name"`
-	Role      string                 `json:"role"` // 'admin', 'creator', 'viewer'
-	Active    bool                   `json:"active"`
-	CreatedAt time.Time              `json:"created_at"`
-	UpdatedAt time.Time              `json:"updated_at"`
+	ID         string                 `json:"id"`
+	Email      string                 `json:"email"`
+	Password   string                 `json:"-"` // Never expose password in JSON
+	FirstName  string                 `json:"first_name"`
+	LastName   string                 `json:"last_name"`
+	Role       string                 `json:"role"` // 'admin', 'creator', 'viewer'
+	Active     bool                   `json:"active"`
+	CreatedAt  time.Time              `json:"created_at"`
+	UpdatedAt  time.Time              `json:"updated_at"`
 	CustomData map[string]interface{} `json:"custom_data,omitempty"`
 }
 
 // UserPreferences represents user-specific preferences
 type UserPreferences struct {
-	ID           string            `json:"id"`
-	UserID       string            `json:"user_id"`
-	Voice        string            `json:"voice"`
-	BackgroundStyle string         `json:"background_style"`
-	Quality      string            `json:"quality"` // 'standard' or 'high'
-	Language     string            `json:"language"`
-	Preferences  map[string]string `json:"preferences"`
-	CreatedAt    time.Time         `json:"created_at"`
-	UpdatedAt    time.Time         `json:"updated_at"`
+	ID              string            `json:"id"`
+	UserID          string            `json:"user_id"`
+	Voice           string            `json:"voice"`
+	BackgroundStyle string            `json:"background_style"`
+	Quality         string            `json:"quality"` // 'standard' or 'high'
+	Language        string            `json:"language"`
+	Preferences     map[string]string `json:"preferences"`
+	CreatedAt       time.Time         `json:"created_at"`
+	UpdatedAt       time.Time         `json:"updated_at"`
 }
 
 // UserSession represents a user session
@@ -149,8 +149,8 @@ type UserSession struct {
 type Job struct {
 	ID          string                 `json:"id"`
 	UserID      string                 `json:"user_id"`
-	Type        string                 `json:"type"` // 'course_generation', 'video_processing', etc.
-	Status      string                 `json:"status"` // 'pending', 'running', 'completed', 'failed'
+	Type        string                 `json:"type"`     // 'course_generation', 'video_processing', etc.
+	Status      string                 `json:"status"`   // 'pending', 'running', 'completed', 'failed'
 	Progress    int                    `json:"progress"` // 0-100
 	Payload     map[string]interface{} `json:"payload"`
 	Result      map[string]interface{} `json:"result,omitempty"`
@@ -163,20 +163,20 @@ type Job struct {
 
 // Video represents a video with accessibility features
 type Video struct {
-	ID            string     `json:"id"`
-	Title         string     `json:"title"`
-	URL           string     `json:"url"`
-	Duration      int        `json:"duration"`
-	HasCaptions   bool       `json:"has_captions"`
-	HasTranscript bool       `json:"has_transcript"`
-	HasAudio      bool       `json:"has_audio"`
-	HasAudioDesc  bool       `json:"has_audio_desc"`
-	Language      string     `json:"language"`
-	ThumbnailURL  *string    `json:"thumbnail_url,omitempty"`
-	Transcript    *string    `json:"transcript,omitempty"`
-	AudioDescURL  *string    `json:"audio_desc_url,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID            string    `json:"id"`
+	Title         string    `json:"title"`
+	URL           string    `json:"url"`
+	Duration      int       `json:"duration"`
+	HasCaptions   bool      `json:"has_captions"`
+	HasTranscript bool      `json:"has_transcript"`
+	HasAudio      bool      `json:"has_audio"`
+	HasAudioDesc  bool      `json:"has_audio_desc"`
+	Language      string    `json:"language"`
+	ThumbnailURL  *string   `json:"thumbnail_url,omitempty"`
+	Transcript    *string   `json:"transcript,omitempty"`
+	AudioDescURL  *string   `json:"audio_desc_url,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 // UploadFile represents a file upload for security validation

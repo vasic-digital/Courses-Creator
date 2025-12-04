@@ -15,7 +15,7 @@ func TestLLMWithEnv(t *testing.T) {
 	// Set test environment variables (these would normally be set externally)
 	os.Setenv("OPENAI_API_KEY", "sk-test-key-placeholder")
 	os.Setenv("ANTHROPIC_API_KEY", "sk-ant-test-key-placeholder")
-	
+
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -40,7 +40,7 @@ func TestLLMWithEnv(t *testing.T) {
 	// Test with a simple prompt
 	ctx := context.Background()
 	testPrompt := "Explain machine learning in one sentence."
-	
+
 	fmt.Println("\nTesting providers with prompt:", testPrompt)
 	fmt.Println("----------------------------------------")
 
@@ -58,15 +58,15 @@ func TestLLMWithEnv(t *testing.T) {
 	// Test direct provider methods
 	fmt.Println("\nTesting individual providers:")
 	fmt.Println("---------------------------------")
-	
+
 	providerList := llmManager.GetProviders()
 	for _, provider := range providerList {
 		fmt.Printf("Testing %s (Available: %v)...\n", provider.GetName(), provider.IsAvailable())
-		
+
 		if !provider.IsAvailable() {
 			continue
 		}
-		
+
 		resp, err := provider.GenerateText(ctx, "Test", models.ProcessingOptions{})
 		if err != nil {
 			fmt.Printf("  Error: %v\n", err)

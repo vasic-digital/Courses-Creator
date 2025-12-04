@@ -15,18 +15,18 @@ import (
 // CourseHandler handles course-related API endpoints
 type CourseHandler struct {
 	courseGenerator *pipeline.CourseGenerator
-	db             *database.DB
-	courseRepo     *repository.CourseRepository
-	jobRepo        *repository.ProcessingJobRepository
+	db              *database.DB
+	courseRepo      *repository.CourseRepository
+	jobRepo         *repository.ProcessingJobRepository
 }
 
 // NewCourseHandler creates a new course handler
 func NewCourseHandler(db *database.DB) *CourseHandler {
 	return &CourseHandler{
 		courseGenerator: pipeline.NewCourseGenerator(),
-		db:             db,
-		courseRepo:     repository.NewCourseRepository(db),
-		jobRepo:        repository.NewProcessingJobRepository(db),
+		db:              db,
+		courseRepo:      repository.NewCourseRepository(db),
+		jobRepo:         repository.NewProcessingJobRepository(db),
 	}
 }
 
@@ -74,11 +74,11 @@ func (h *CourseHandler) GenerateCourse(c *gin.Context) {
 	}
 
 	job := &models.ProcessingJobDB{
-		InputPath: req.MarkdownPath,
+		InputPath:  req.MarkdownPath,
 		OutputPath: &outputDir,
-		Options:   optionsJSON,
-		Status:    "pending",
-		Progress:  0,
+		Options:    optionsJSON,
+		Status:     "pending",
+		Progress:   0,
 	}
 
 	job, err = h.jobRepo.CreateJob(job)
@@ -91,9 +91,9 @@ func (h *CourseHandler) GenerateCourse(c *gin.Context) {
 	go h.processCourseAsync(job.ID, req.MarkdownPath, outputDir, options)
 
 	response := GenerateCourseResponse{
-		JobID:      job.ID,
-		Status:     "pending",
-		Message:    "Course generation started",
+		JobID:   job.ID,
+		Status:  "pending",
+		Message: "Course generation started",
 	}
 
 	c.JSON(http.StatusAccepted, response)
@@ -245,9 +245,9 @@ type GenerateCourseResponse struct {
 
 type ListCoursesResponse struct {
 	Courses []models.CourseDB `json:"courses"`
-	Total   int64            `json:"total"`
-	Page    int              `json:"page"`
-	Limit   int              `json:"limit"`
+	Total   int64             `json:"total"`
+	Page    int               `json:"page"`
+	Limit   int               `json:"limit"`
 }
 
 type ListJobsResponse struct {
@@ -262,7 +262,7 @@ func (h *CourseHandler) GetCourses(params map[string]interface{}) ([]models.Cour
 	page := 1
 	pageSize := 20
 	search := ""
-	
+
 	if p, ok := params["page"].(int); ok {
 		page = p
 	}
@@ -272,14 +272,14 @@ func (h *CourseHandler) GetCourses(params map[string]interface{}) ([]models.Cour
 	if s, ok := params["search"].(string); ok {
 		search = s
 	}
-	
+
 	offset := (page - 1) * pageSize
-	
+
 	if search != "" {
 		courses, _, err := h.courseRepo.SearchCourses(search, offset, pageSize)
 		return courses, err
 	}
-	
+
 	courses, _, err := h.courseRepo.GetAllCourses(offset, pageSize)
 	return courses, err
 }

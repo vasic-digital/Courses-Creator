@@ -19,20 +19,20 @@ func NewStorageManager(configs map[string]StorageConfig) (*StorageManager, error
 	sm := &StorageManager{
 		providers: make(map[string]StorageInterface),
 	}
-	
+
 	for name, config := range configs {
 		provider, err := createProvider(config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create storage provider %s: %w", name, err)
 		}
 		sm.providers[name] = provider
-		
+
 		// Set first provider as default
 		if sm.defaultName == "" {
 			sm.defaultName = name
 		}
 	}
-	
+
 	return sm, nil
 }
 
@@ -97,11 +97,11 @@ func (sm *StorageManager) SwitchProvider(config StorageConfig) error {
 	if err != nil {
 		return err
 	}
-	
+
 	providerName := "switched"
 	sm.providers[providerName] = provider
 	sm.defaultName = providerName
-	
+
 	return nil
 }
 
@@ -122,17 +122,17 @@ func createProvider(config StorageConfig) (StorageInterface, error) {
 		if config.BasePath == "" {
 			config.BasePath = "./storage"
 		}
-		
+
 		// Ensure base path exists
 		if err := os.MkdirAll(config.BasePath, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create base path: %w", err)
 		}
-		
+
 		return NewLocalStorage(config), nil
-		
+
 	case "s3":
 		return NewS3Storage(config)
-		
+
 	default:
 		return nil, fmt.Errorf("unsupported storage type: %s", config.Type)
 	}

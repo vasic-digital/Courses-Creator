@@ -16,8 +16,8 @@ import (
 
 // AuthService handles authentication and user management
 type AuthService struct {
-	db          *gorm.DB
-	auth        *middleware.AuthMiddleware
+	db   *gorm.DB
+	auth *middleware.AuthMiddleware
 }
 
 // NewAuthService creates a new authentication service
@@ -56,12 +56,12 @@ func (s *AuthService) Register(ctx context.Context, req *RegisterRequest) (*Auth
 	if err := ValidateLoginInput(req.Email, req.Password); err != nil {
 		return nil, fmt.Errorf("invalid input: %w", err)
 	}
-	
+
 	// Validate password strength
 	if err := ValidatePasswordStrength(req.Password); err != nil {
 		return nil, fmt.Errorf("weak password: %w", err)
 	}
-	
+
 	// Check if user already exists
 	var existingUser models.UserDB
 	if err := s.db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
@@ -131,7 +131,7 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*AuthRespon
 	if err := ValidateLoginInput(req.Email, req.Password); err != nil {
 		return nil, fmt.Errorf("invalid input: %w", err)
 	}
-	
+
 	// Find user
 	var user models.UserDB
 	if err := s.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
@@ -258,7 +258,7 @@ func (s *AuthService) UpdatePassword(ctx context.Context, userID, currentPasswor
 	if err := ValidatePasswordStrength(newPassword); err != nil {
 		return fmt.Errorf("weak password: %w", err)
 	}
-	
+
 	var user models.UserDB
 	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
 		return fmt.Errorf("failed to find user: %w", err)

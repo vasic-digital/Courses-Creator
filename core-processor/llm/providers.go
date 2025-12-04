@@ -85,7 +85,7 @@ func (p *FreeProvider) GenerateText(ctx context.Context, prompt string, options 
 	if ollama := NewOllamaProvider("", ""); ollama.IsAvailable() {
 		return ollama.GenerateText(ctx, prompt, options)
 	}
-	
+
 	// Fallback to placeholder response
 	fmt.Printf("Generating text with free provider %s (placeholder)\n", p.name)
 

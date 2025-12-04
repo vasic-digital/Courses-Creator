@@ -25,23 +25,23 @@ type BaseMCPServer interface {
 
 // MCPServerConfig holds configuration for MCP server
 type MCPServerConfig struct {
-	Name        string
-	Version     string
-	Transport   string // "stdio" or "tcp"
-	Address     string // TCP address if transport is "tcp"
-	Timeout     time.Duration
-	MaxRetries  int
+	Name       string
+	Version    string
+	Transport  string // "stdio" or "tcp"
+	Address    string // TCP address if transport is "tcp"
+	Timeout    time.Duration
+	MaxRetries int
 }
 
 // BaseServerImpl provides a basic implementation of MCP server
 type BaseServerImpl struct {
-	Config     MCPServerConfig
-	Tools      map[string]Tool
-	listener   net.Listener
-	running    bool
-	stopCh     chan struct{}
-	wg         sync.WaitGroup
-	mu         sync.RWMutex
+	Config   MCPServerConfig
+	Tools    map[string]Tool
+	listener net.Listener
+	running  bool
+	stopCh   chan struct{}
+	wg       sync.WaitGroup
+	mu       sync.RWMutex
 }
 
 // Tool represents an MCP tool
@@ -220,7 +220,7 @@ func (s *BaseServerImpl) runTCP(ctx context.Context) error {
 					}
 					continue
 				}
-				
+
 				// Handle connection in goroutine
 				s.wg.Add(1)
 				go func(c net.Conn) {

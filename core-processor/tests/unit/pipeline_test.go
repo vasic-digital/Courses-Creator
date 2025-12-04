@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	storage "github.com/course-creator/core-processor/filestorage"
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/pipeline"
-	storage "github.com/course-creator/core-processor/filestorage"
 	"github.com/course-creator/core-processor/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,14 +31,14 @@ func TestTTSProcessor_NewTTSProcessor(t *testing.T) {
 func TestTTSProcessor_NewTTSProcessorWithConfig(t *testing.T) {
 	config := pipeline.TTSConfig{
 		DefaultProvider: pipeline.TTSProviderSpeechT5,
-		OutputDir:      "/custom/audio",
-		SampleRate:     16000,
-		BitRate:        96000,
-		Format:         "mp3",
-		Timeout:        120 * time.Second,
-		MaxRetries:     5,
-		ChunkSize:      100,
-		Parallelism:    4,
+		OutputDir:       "/custom/audio",
+		SampleRate:      16000,
+		BitRate:         96000,
+		Format:          "mp3",
+		Timeout:         120 * time.Second,
+		MaxRetries:      5,
+		ChunkSize:       100,
+		Parallelism:     4,
 	}
 
 	processor := pipeline.NewTTSProcessorWithConfig(config)
@@ -53,7 +53,7 @@ func TestTTSProcessor_NewTTSProcessorWithConfig(t *testing.T) {
 
 func TestTTSProcessor_GenerateAudio(t *testing.T) {
 	t.Skip("Skipping TTS test - requires large model downloads")
-	
+
 	processor := pipeline.NewTTSProcessor()
 
 	options := models.ProcessingOptions{
@@ -68,7 +68,7 @@ func TestTTSProcessor_GenerateAudio(t *testing.T) {
 	// Should generate audio (may be placeholder if TTS servers not available)
 	if err == nil && audioPath != "" {
 		assert.NotEmpty(t, audioPath)
-		
+
 		// Clean up
 		os.Remove(audioPath)
 	}
@@ -98,7 +98,7 @@ func TestTTSProcessor_SplitText(t *testing.T) {
 
 func TestTTSProcessor_Stop(t *testing.T) {
 	processor := pipeline.NewTTSProcessor()
-	
+
 	// Should be running initially
 	assert.True(t, processor.IsRunning())
 
@@ -113,11 +113,11 @@ func TestVideoAssembler_NewVideoAssembler(t *testing.T) {
 	// Create a temporary storage for testing
 	tempDir := "/tmp/test_storage"
 	storageConfig := storage.StorageConfig{
-		BasePath: tempDir,
+		BasePath:  tempDir,
 		PublicURL: "",
 	}
 	storage := storage.NewLocalStorage(storageConfig)
-	
+
 	assembler := pipeline.NewVideoAssembler(storage)
 
 	require.NotNil(t, assembler)
@@ -135,7 +135,7 @@ func TestVideoAssembler_NewVideoAssemblerWithConfig(t *testing.T) {
 			Width:       1280,
 			Height:      720,
 			Bitrate:     "1M",
-			Framerate:    25,
+			Framerate:   25,
 			Codec:       "libx265",
 			PixelFormat: "yuv420p",
 		},
@@ -152,11 +152,11 @@ func TestVideoAssembler_NewVideoAssemblerWithConfig(t *testing.T) {
 	// Create storage for the assembler
 	tempDir := "/tmp/test_storage"
 	storageConfig := storage.StorageConfig{
-		BasePath: tempDir,
+		BasePath:  tempDir,
 		PublicURL: "",
 	}
 	storage := storage.NewLocalStorage(storageConfig)
-	
+
 	assembler := pipeline.NewVideoAssemblerWithConfig(config, storage)
 
 	require.NotNil(t, assembler)
@@ -171,7 +171,7 @@ func TestVideoAssembler_ParseTextSegments(t *testing.T) {
 	// Create a temporary storage for testing
 	tempDir := "/tmp/test_storage"
 	storageConfig := storage.StorageConfig{
-		BasePath: tempDir,
+		BasePath:  tempDir,
 		PublicURL: "",
 	}
 	storage := storage.NewLocalStorage(storageConfig)
@@ -187,17 +187,17 @@ This is line 3.`
 	segments := assembler.ParseTextSegments(textContent, duration)
 
 	assert.Len(t, segments, 3)
-	
+
 	// Check first segment
 	assert.Equal(t, "This is line 1.", segments[0].Text)
 	assert.Equal(t, 0.0, segments[0].StartTime)
 	assert.Equal(t, 3.0, segments[0].EndTime)
-	
+
 	// Check second segment
 	assert.Equal(t, "This is line 2.", segments[1].Text)
 	assert.Equal(t, 3.0, segments[1].StartTime)
 	assert.Equal(t, 6.0, segments[1].EndTime)
-	
+
 	// Check third segment
 	assert.Equal(t, "This is line 3.", segments[2].Text)
 	assert.Equal(t, 6.0, segments[2].StartTime)
@@ -225,15 +225,15 @@ func TestCourseGenerator_NewCourseGenerator(t *testing.T) {
 
 func TestCourseGenerator_GenerateCourse(t *testing.T) {
 	t.Skip("Skipping CourseGenerator test - requires TTS generation")
-	
+
 	// Create temporary markdown file
 	tempDir := filepath.Join(os.TempDir(), "course_test")
 	outputDir := filepath.Join(os.TempDir(), "course_output")
-	
+
 	err := utils.EnsureDir(tempDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
-	
+
 	err = utils.EnsureDir(outputDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(outputDir)
@@ -259,14 +259,14 @@ Thank you for completing the course.`
 	require.NoError(t, err)
 
 	generator := pipeline.NewCourseGenerator()
-	
+
 	options := models.ProcessingOptions{
 		Quality:   "standard",
 		Languages: []string{"en"},
 	}
 
 	course, err := generator.GenerateCourse(markdownPath, outputDir, options)
-	
+
 	// Should generate course structure even with placeholder implementations
 	if err == nil && course != nil {
 		assert.NotEmpty(t, course.ID)
@@ -278,15 +278,15 @@ Thank you for completing the course.`
 
 func TestIntegration_CompleteCourseGeneration(t *testing.T) {
 	t.Skip("Skipping Integration test - requires TTS generation")
-	
+
 	// This test integrates multiple components
 	tempDir := filepath.Join(os.TempDir(), "integration_test")
 	outputDir := filepath.Join(os.TempDir(), "integration_output")
-	
+
 	err := utils.EnsureDir(tempDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
-	
+
 	err = utils.EnsureDir(outputDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(outputDir)
@@ -329,12 +329,12 @@ This concludes our integration test.`
 	require.NoError(t, err)
 
 	generator := pipeline.NewCourseGenerator()
-	
+
 	options := models.ProcessingOptions{
-		Quality:          "high",
-		Languages:        []string{"en"},
-		BackgroundMusic:   true,
-		Voice:            stringPtr("v2/en_speaker_6"),
+		Quality:         "high",
+		Languages:       []string{"en"},
+		BackgroundMusic: true,
+		Voice:           stringPtr("v2/en_speaker_6"),
 	}
 
 	ctx := context.Background()
@@ -351,7 +351,7 @@ This concludes our integration test.`
 			errCh <- err
 			return
 		}
-		
+
 		resultCh <- course
 	}()
 
@@ -368,7 +368,7 @@ This concludes our integration test.`
 		assert.NotEmpty(t, course.ID)
 		assert.Equal(t, "Complete Integration Test Course", course.Title)
 		assert.Equal(t, 4, len(course.Lessons)) // Introduction, Technical Details, Advanced Features, Conclusion
-		
+
 		// Verify lesson content
 		lessonTitles := []string{}
 		for _, lesson := range course.Lessons {
@@ -376,7 +376,7 @@ This concludes our integration test.`
 			assert.NotEmpty(t, lesson.ID)
 			assert.NotEmpty(t, lesson.Content)
 		}
-		
+
 		assert.Contains(t, lessonTitles, "Lesson 1: Introduction")
 		assert.Contains(t, lessonTitles, "Lesson 2: Technical Details")
 		assert.Contains(t, lessonTitles, "Lesson 3: Advanced Features")

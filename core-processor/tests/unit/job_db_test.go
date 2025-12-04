@@ -15,17 +15,17 @@ func TestJobDBSimple(t *testing.T) {
 	// Create database
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
-	
+
 	// Configure SQLite
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
 	_, err = sqlDB.Exec("PRAGMA foreign_keys = ON")
 	require.NoError(t, err)
-	
+
 	// Migrate
 	err = db.AutoMigrate(&models.UserDB{}, &models.JobDB{})
 	require.NoError(t, err)
-	
+
 	// Create user
 	user := &models.UserDB{
 		ID:    "test-user-id",
@@ -34,7 +34,7 @@ func TestJobDBSimple(t *testing.T) {
 	}
 	err = db.Create(user).Error
 	require.NoError(t, err)
-	
+
 	// Create job using the same DB connection
 	job := &jobs.Job{
 		ID:        "test-job-id",
@@ -47,11 +47,11 @@ func TestJobDBSimple(t *testing.T) {
 		CreatedAt: db.NowFunc(),
 		UpdatedAt: db.NowFunc(),
 	}
-	
+
 	// Convert to DB model manually
 	payloadJSON, err := json.Marshal(job.Payload)
 	require.NoError(t, err)
-	
+
 	jobDB := &models.JobDB{
 		ID:        job.ID,
 		UserID:    job.UserID,
@@ -62,16 +62,16 @@ func TestJobDBSimple(t *testing.T) {
 		CreatedAt: job.CreatedAt,
 		UpdatedAt: job.UpdatedAt,
 	}
-	
+
 	// Save directly
 	err = db.Save(jobDB).Error
 	require.NoError(t, err)
-	
+
 	// Retrieve
 	var retrieved models.JobDB
 	err = db.Where("id = ?", job.ID).First(&retrieved).Error
 	require.NoError(t, err)
-	
+
 	require.Equal(t, job.ID, retrieved.ID)
 	require.Equal(t, job.UserID, retrieved.UserID)
 }

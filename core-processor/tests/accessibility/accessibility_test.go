@@ -19,21 +19,21 @@ func stringPtr(s string) *string {
 
 // AccessibilityResponse represents the response from accessibility testing
 type AccessibilityResponse struct {
-	StatusCode int           `json:"statusCode"`
+	StatusCode int               `json:"statusCode"`
 	Data       AccessibilityData `json:"data"`
 }
 
 type AccessibilityData struct {
-	TestUrl        string                `json:"testUrl"`
-	TestTimestamp  string               `json:"testTimestamp"`
-	TestResult     AccessibilityResult   `json:"testResult"`
+	TestUrl       string              `json:"testUrl"`
+	TestTimestamp string              `json:"testTimestamp"`
+	TestResult    AccessibilityResult `json:"testResult"`
 }
 
 type AccessibilityResult struct {
-	Status      string                    `json:"status"`
-	Score       AccessibilityScore        `json:"score"`
-	Violations  []AccessibilityViolation   `json:"violations"`
-	Passes      []AccessibilityPass       `json:"passes"`
+	Status     string                   `json:"status"`
+	Score      AccessibilityScore       `json:"score"`
+	Violations []AccessibilityViolation `json:"violations"`
+	Passes     []AccessibilityPass      `json:"passes"`
 }
 
 type AccessibilityScore struct {
@@ -42,10 +42,10 @@ type AccessibilityScore struct {
 }
 
 type AccessibilityViolation struct {
-	RuleId      string   `json:"ruleId"`
-	Description string   `json:"description"`
-	Impact      string   `json:"impact"`
-	Nodes       []Node   `json:"nodes"`
+	RuleId      string `json:"ruleId"`
+	Description string `json:"description"`
+	Impact      string `json:"impact"`
+	Nodes       []Node `json:"nodes"`
 }
 
 type Node struct {
@@ -87,10 +87,10 @@ func (m *MockAccessibilityChecker) CheckAccessibility(url string) (*Accessibilit
 
 func TestWebPlayerAccessibility(t *testing.T) {
 	checker := &MockAccessibilityChecker{}
-	
+
 	// Mock player routes
 	router := mux.NewRouter()
-	
+
 	// Mock player page content
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		html := `<!DOCTYPE html>
@@ -188,116 +188,116 @@ func TestWebPlayerAccessibility(t *testing.T) {
 	})
 
 	testCases := []struct {
-		name         string
-		path         string
+		name             string
+		path             string
 		expectViolations bool
-		expectedRating string
+		expectedRating   string
 	}{
 		{
-			name:            "Home page",
-			path:            "/",
+			name:             "Home page",
+			path:             "/",
 			expectViolations: false,
 			expectedRating:   "AA",
 		},
 		{
-			name:            "Course player page",
-			path:            "/course/123",
+			name:             "Course player page",
+			path:             "/course/123",
 			expectViolations: false,
 			expectedRating:   "AA",
 		},
 	}
 
-for _, tc := range testCases {
-	t.Run(tc.name, func(t *testing.T) {
-		req := httptest.NewRequest("GET", tc.path, nil)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", tc.path, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
 
-		if w.Code != http.StatusOK {
-			t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
-			return
-		}
+			if w.Code != http.StatusOK {
+				t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+				return
+			}
 
-		// Check accessibility
-		testUrl := "http://localhost:8080" + tc.path
-		result, err := checker.CheckAccessibility(testUrl)
-		if err != nil {
-			t.Errorf("Accessibility check failed: %v", err)
-			return
-		}
+			// Check accessibility
+			testUrl := "http://localhost:8080" + tc.path
+			result, err := checker.CheckAccessibility(testUrl)
+			if err != nil {
+				t.Errorf("Accessibility check failed: %v", err)
+				return
+			}
 
-		if result.Data.TestResult.Status != "complete" {
-			t.Errorf("Accessibility test incomplete: %s", result.Data.TestResult.Status)
-		}
+			if result.Data.TestResult.Status != "complete" {
+				t.Errorf("Accessibility test incomplete: %s", result.Data.TestResult.Status)
+			}
 
-		if result.Data.TestResult.Score.Rating != tc.expectedRating {
-			t.Errorf("Expected accessibility rating %s, got %s", 
-				tc.expectedRating, result.Data.TestResult.Score.Rating)
-		}
+			if result.Data.TestResult.Score.Rating != tc.expectedRating {
+				t.Errorf("Expected accessibility rating %s, got %s",
+					tc.expectedRating, result.Data.TestResult.Score.Rating)
+			}
 
-		if tc.expectViolations && len(result.Data.TestResult.Violations) == 0 {
-			t.Errorf("Expected violations but found none")
-		}
+			if tc.expectViolations && len(result.Data.TestResult.Violations) == 0 {
+				t.Errorf("Expected violations but found none")
+			}
 
-		if !tc.expectViolations && len(result.Data.TestResult.Violations) > 0 {
-			t.Errorf("Expected no violations but found %d", 
-				len(result.Data.TestResult.Violations))
-		}
+			if !tc.expectViolations && len(result.Data.TestResult.Violations) > 0 {
+				t.Errorf("Expected no violations but found %d",
+					len(result.Data.TestResult.Violations))
+			}
 
-		t.Logf("Accessibility score: %d (%s rating)", 
-			result.Data.TestResult.Score.Score, 
-			result.Data.TestResult.Score.Rating)
-	})
-}
+			t.Logf("Accessibility score: %d (%s rating)",
+				result.Data.TestResult.Score.Score,
+				result.Data.TestResult.Score.Rating)
+		})
+	}
 }
 
 func TestVideoAccessibility(t *testing.T) {
 	testCases := []struct {
-		name         string
-		video        models.Video
-		expectValid  bool
+		name        string
+		video       models.Video
+		expectValid bool
 	}{
 		{
 			name: "Video with captions",
 			video: models.Video{
-				ID:          "video1",
-				Title:       "Introduction Video",
-				URL:         "https://example.com/video.mp4",
-				HasCaptions: true,
+				ID:            "video1",
+				Title:         "Introduction Video",
+				URL:           "https://example.com/video.mp4",
+				HasCaptions:   true,
 				HasTranscript: true,
-				HasAudio:    true,
-				Transcript:  stringPtr("Full transcript of the video content..."),
-				Duration:    300,
+				HasAudio:      true,
+				Transcript:    stringPtr("Full transcript of the video content..."),
+				Duration:      300,
 			},
 			expectValid: true,
 		},
 		{
 			name: "Video without captions",
 			video: models.Video{
-				ID:          "video2",
-				Title:       "Video without captions",
-				URL:         "https://example.com/video.mp4",
-				HasCaptions: false,
+				ID:            "video2",
+				Title:         "Video without captions",
+				URL:           "https://example.com/video.mp4",
+				HasCaptions:   false,
 				HasTranscript: false,
-				HasAudio:    true,
-				Transcript:  stringPtr(""),
-				Duration:    300,
+				HasAudio:      true,
+				Transcript:    stringPtr(""),
+				Duration:      300,
 			},
 			expectValid: false,
 		},
 		{
 			name: "Video with audio description",
 			video: models.Video{
-				ID:               "video3",
-				Title:            "Video with audio description",
-				URL:              "https://example.com/video.mp4",
-				HasCaptions:      true,
-				HasAudioDesc:     true,
-				HasTranscript:    true,
-				HasAudio:         true,
-				Transcript:       stringPtr("Full transcript of the video content..."),
-				AudioDescURL:     stringPtr("https://example.com/audio-desc.mp3"),
-				Duration:         300,
+				ID:            "video3",
+				Title:         "Video with audio description",
+				URL:           "https://example.com/video.mp4",
+				HasCaptions:   true,
+				HasAudioDesc:  true,
+				HasTranscript: true,
+				HasAudio:      true,
+				Transcript:    stringPtr("Full transcript of the video content..."),
+				AudioDescURL:  stringPtr("https://example.com/audio-desc.mp3"),
+				Duration:      300,
 			},
 			expectValid: true,
 		},
@@ -307,7 +307,7 @@ func TestVideoAccessibility(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			report, err := services.ValidateVideoAccessibility(&tc.video)
 			require.NoError(t, err)
-			
+
 			// A video is valid if there are no high or medium severity violations
 			hasSeriousViolations := false
 			for _, violation := range report.Violations {
@@ -316,14 +316,14 @@ func TestVideoAccessibility(t *testing.T) {
 					break
 				}
 			}
-			
+
 			// Consider the test valid if there are no serious violations
 			isValid := !hasSeriousViolations
-			
+
 			if tc.expectValid && !isValid {
 				t.Errorf("Expected video to be accessible but validation found high severity violations: %v", report.Violations)
 			}
-			
+
 			if !tc.expectValid && isValid {
 				t.Errorf("Expected video to be inaccessible but validation passed. Violations: %v", report.Violations)
 			}
@@ -333,9 +333,9 @@ func TestVideoAccessibility(t *testing.T) {
 
 func TestCourseContentAccessibility(t *testing.T) {
 	testCases := []struct {
-		name         string
-		content      string
-		expectValid  bool
+		name           string
+		content        string
+		expectValid    bool
 		expectedIssues []string
 	}{
 		{
@@ -354,7 +354,7 @@ func TestCourseContentAccessibility(t *testing.T) {
 						<tr><td>Data 1</td><td>Data 2</td></tr>
 					</tbody>
 				</table>`,
-			expectValid: true,
+			expectValid:    true,
 			expectedIssues: []string{},
 		},
 		{
@@ -362,7 +362,7 @@ func TestCourseContentAccessibility(t *testing.T) {
 			content: `<h1>Title</h1>
 				<img src="image.jpg"> <!-- Missing alt text -->
 				<p>Content with <a href="https://example.com">click here</a></p> <!-- Non-descriptive link -->`,
-			expectValid: false,
+			expectValid:    false,
 			expectedIssues: []string{"missing_alt_text", "Non-descriptive link text"},
 		},
 		{
@@ -370,14 +370,14 @@ func TestCourseContentAccessibility(t *testing.T) {
 			content: `<h1>Title</h1>
 				<h3>Skipped h2 heading</h3> <!-- Skipped h2 -->
 				<p>Content</p>`,
-			expectValid: false,
+			expectValid:    false,
 			expectedIssues: []string{"heading_skip_detected"},
 		},
 		{
 			name: "Content with insufficient color contrast",
 			content: `<h1>Title</h1>
 				<p style="color: #999999; background-color: #ffffff;">Low contrast text</p> <!-- Low contrast -->`,
-			expectValid: false,
+			expectValid:    false,
 			expectedIssues: []string{"color_contrast"},
 		},
 	}
@@ -386,7 +386,7 @@ func TestCourseContentAccessibility(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			report, err := services.ValidateContentAccessibility(tc.content, "html")
 			require.NoError(t, err)
-			
+
 			// A content is valid if there are no high or medium severity violations
 			hasSeriousViolations := false
 			for _, violation := range report.Violations {
@@ -395,17 +395,17 @@ func TestCourseContentAccessibility(t *testing.T) {
 					break
 				}
 			}
-			
+
 			valid := !hasSeriousViolations
-			
+
 			if tc.expectValid && !valid {
 				t.Errorf("Expected content to be accessible but found issues: %v", report.Violations)
 			}
-			
+
 			if !tc.expectValid && valid {
 				t.Errorf("Expected content to be inaccessible but validation passed")
 			}
-			
+
 			// Check for specific expected issues
 			for _, expectedIssue := range tc.expectedIssues {
 				found := false
@@ -416,7 +416,7 @@ func TestCourseContentAccessibility(t *testing.T) {
 					}
 				}
 				if !found {
-					t.Errorf("Expected issue '%s' not found in validation results: %v", 
+					t.Errorf("Expected issue '%s' not found in validation results: %v",
 						expectedIssue, report.Violations)
 				}
 			}
@@ -426,7 +426,7 @@ func TestCourseContentAccessibility(t *testing.T) {
 
 func TestKeyboardNavigation(t *testing.T) {
 	router := mux.NewRouter()
-	
+
 	// Mock interactive page with keyboard navigation
 	router.HandleFunc("/interactive", func(w http.ResponseWriter, r *http.Request) {
 		html := `<!DOCTYPE html>
@@ -455,13 +455,13 @@ func TestKeyboardNavigation(t *testing.T) {
 	})
 
 	testCases := []struct {
-		name          string
-		path          string
+		name            string
+		path            string
 		expectFocusable int // Number of focusable elements
 	}{
 		{
-			name:           "Interactive page",
-			path:           "/interactive",
+			name:            "Interactive page",
+			path:            "/interactive",
 			expectFocusable: 6, // Custom button (div), standard button, input, select, two tabs
 		},
 	}
@@ -480,20 +480,20 @@ func TestKeyboardNavigation(t *testing.T) {
 			// Check focusable elements
 			focusableCount, err := services.CountFocusableElements(w.Body.String())
 			require.NoError(t, err)
-			
+
 			if focusableCount != tc.expectFocusable {
-				t.Errorf("Expected %d focusable elements, found %d", 
+				t.Errorf("Expected %d focusable elements, found %d",
 					tc.expectFocusable, focusableCount)
 			}
 
 			// Check tab order
 			tabOrder, err := services.GetTabOrder(w.Body.String())
 			require.NoError(t, err)
-			
+
 			// The tab order function returns element types, not actual count
 			// So we check that it includes at least types of elements we expect
 			if len(tabOrder) < 4 {
-				t.Errorf("Expected tab order of at least 4 element types, found %d", 
+				t.Errorf("Expected tab order of at least 4 element types, found %d",
 					len(tabOrder))
 			}
 		})
@@ -502,10 +502,10 @@ func TestKeyboardNavigation(t *testing.T) {
 
 func TestScreenReaderCompatibility(t *testing.T) {
 	testCases := []struct {
-		name          string
-		content       string
-		expectValid   bool
-		expectedARIA  []string
+		name         string
+		content      string
+		expectValid  bool
+		expectedARIA []string
 	}{
 		{
 			name: "Content with proper ARIA labels",
@@ -520,7 +520,7 @@ func TestScreenReaderCompatibility(t *testing.T) {
 				<div role="button" tabindex="0" aria-label="Play video">▶</div>
 				<div role="status" aria-live="polite">Status message</div>
 			</main>`,
-			expectValid: true,
+			expectValid:  true,
 			expectedARIA: []string{"role", "aria-label", "aria-current", "aria-labelledby", "aria-live"},
 		},
 		{
@@ -532,14 +532,14 @@ func TestScreenReaderCompatibility(t *testing.T) {
 				</ul>
 			</div>
 			<div>▶</div> <!-- Button without ARIA label -->`,
-			expectValid: false,
+			expectValid:  false,
 			expectedARIA: []string{},
 		},
 		{
 			name: "Content with invalid ARIA usage",
 			content: `<div role="button" aria-hidden="false" tabindex="0">Visible button</div>
 			<img src="image.jpg" role="presentation" alt="Alt text for presentational image"> <!-- Contradictory -->`,
-			expectValid: false,
+			expectValid:  false,
 			expectedARIA: []string{"role", "aria-hidden", "contradictory_aria"},
 		},
 	}
@@ -548,28 +548,28 @@ func TestScreenReaderCompatibility(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ariaElements, err := services.GetARIAElements(tc.content)
 			require.NoError(t, err)
-			
+
 			issues, err := services.ValidateARIAUsage(tc.content)
 			require.NoError(t, err)
-			
+
 			// Check if there are any issues
 			hasIssues := len(issues) > 0
-			
+
 			if tc.expectValid && hasIssues {
 				t.Errorf("Expected ARIA usage to be valid but validation failed: %v", issues)
 			}
-			
+
 			if !tc.expectValid && !hasIssues {
 				t.Errorf("Expected ARIA usage to be invalid but validation passed")
 			}
-			
+
 			// Check for expected ARIA attributes
 			for _, expectedARIA := range tc.expectedARIA {
 				found := false
 				if _, ok := ariaElements[expectedARIA]; ok {
 					found = true
 				}
-				
+
 				// Also check if expectedARIA matches an issue type
 				if !found {
 					for _, issue := range issues {
@@ -579,7 +579,7 @@ func TestScreenReaderCompatibility(t *testing.T) {
 						}
 					}
 				}
-				
+
 				if !found {
 					t.Errorf("Expected ARIA attribute '%s' not found in content", expectedARIA)
 				}
@@ -629,18 +629,18 @@ func TestColorContrast(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ratio, valid := services.ValidateColorContrast(tc.foreground, tc.background)
-			
+
 			if tc.expectValid && !valid {
 				t.Errorf("Expected color contrast to be valid but validation failed. Ratio: %.2f", ratio)
 			}
-			
+
 			if !tc.expectValid && valid {
 				t.Errorf("Expected color contrast to be invalid but validation passed. Ratio: %.2f", ratio)
 			}
-			
+
 			// Check if ratio is close to expected
 			if ratio < tc.expectedRatio*0.9 || ratio > tc.expectedRatio*1.1 {
-				t.Errorf("Expected contrast ratio around %.2f, got %.2f", 
+				t.Errorf("Expected contrast ratio around %.2f, got %.2f",
 					tc.expectedRatio, ratio)
 			}
 		})
@@ -650,10 +650,10 @@ func TestColorContrast(t *testing.T) {
 func TestWCAGCompliance(t *testing.T) {
 	// Test overall WCAG 2.1 AA compliance
 	checker := &MockAccessibilityChecker{}
-	
+
 	// Create comprehensive test page
 	router := mux.NewRouter()
-	
+
 	router.HandleFunc("/comprehensive", func(w http.ResponseWriter, r *http.Request) {
 		html := services.GenerateCompliantHTMLPage()
 		w.Header().Set("Content-Type", "text/html")
@@ -684,7 +684,7 @@ func TestWCAGCompliance(t *testing.T) {
 	}
 
 	if result.Data.TestResult.Score.Score < 90 {
-		t.Errorf("Expected accessibility score >= 90, got %d", 
+		t.Errorf("Expected accessibility score >= 90, got %d",
 			result.Data.TestResult.Score.Score)
 	}
 

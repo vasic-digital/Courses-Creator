@@ -22,10 +22,10 @@ func NewProviderManager(cfg *config.LLMConfig) *ProviderManager {
 		providers: []LLMProvider{},
 		config:    cfg,
 	}
-	
+
 	// Auto-register providers based on config
 	pm.registerProvidersFromConfig()
-	
+
 	return pm
 }
 
@@ -35,21 +35,21 @@ func (pm *ProviderManager) registerProvidersFromConfig() {
 	if pm.config == nil {
 		return
 	}
-	
+
 	// Register OpenAI if API key is available
 	if pm.config.OpenAI.APIKey != "" {
 		provider := NewOpenAIProvider(pm.config.OpenAI.APIKey, pm.config.OpenAI.DefaultModel)
 		pm.RegisterProvider(provider)
 		fmt.Printf("Registered OpenAI provider with model: %s\n", pm.config.OpenAI.DefaultModel)
 	}
-	
+
 	// Register Anthropic if API key is available
 	if pm.config.Anthropic.APIKey != "" {
 		provider := NewAnthropicProvider(pm.config.Anthropic.APIKey, pm.config.Anthropic.DefaultModel)
 		pm.RegisterProvider(provider)
 		fmt.Printf("Registered Anthropic provider with model: %s\n", pm.config.Anthropic.DefaultModel)
 	}
-	
+
 	// Always try to register Ollama (with defaults if config is nil)
 	ollamaURL := "http://localhost:11434"
 	ollamaModel := "llama2"
@@ -75,7 +75,7 @@ func (pm *ProviderManager) RegisterProvider(provider LLMProvider) {
 func (pm *ProviderManager) GetBestProvider(preferences ProviderPreferences) LLMProvider {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
-	
+
 	var bestProvider LLMProvider
 	var bestScore float64 = -1
 
@@ -100,7 +100,7 @@ func (pm *ProviderManager) GenerateWithFallback(ctx context.Context, prompt stri
 	providers := make([]LLMProvider, len(pm.providers))
 	copy(providers, pm.providers)
 	pm.mu.RUnlock()
-	
+
 	for _, provider := range providers {
 		if !provider.IsAvailable() {
 			continue
@@ -157,7 +157,7 @@ func (pm *ProviderManager) calculateProviderScore(provider LLMProvider, prefs Pr
 func (pm *ProviderManager) GetProviders() []LLMProvider {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
-	
+
 	providers := make([]LLMProvider, len(pm.providers))
 	copy(providers, pm.providers)
 	return providers
@@ -167,7 +167,7 @@ func (pm *ProviderManager) GetProviders() []LLMProvider {
 func (pm *ProviderManager) GetAvailableProviders() []LLMProvider {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
-	
+
 	var available []LLMProvider
 	for _, provider := range pm.providers {
 		if provider.IsAvailable() {
@@ -181,7 +181,7 @@ func (pm *ProviderManager) GetAvailableProviders() []LLMProvider {
 func (pm *ProviderManager) UpdateConfig(cfg *config.LLMConfig) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-	
+
 	pm.config = cfg
 	pm.providers = []LLMProvider{} // Clear existing providers
 	pm.registerProvidersFromConfig()
@@ -193,11 +193,11 @@ func (pm *ProviderManager) GetDefaultPreferences() ProviderPreferences {
 		return ProviderPreferences{
 			PreferredType:     ProviderTypeFree,
 			MaxCostPerRequest: 1.0,
-			PrioritizeQuality:  false,
+			PrioritizeQuality: false,
 			AllowPaid:         true,
 		}
 	}
-	
+
 	return ProviderPreferences{
 		PreferredType:     ProviderType(pm.config.DefaultProvider),
 		MaxCostPerRequest: pm.config.MaxCostPerRequest,
@@ -210,7 +210,7 @@ func (pm *ProviderManager) GetDefaultPreferences() ProviderPreferences {
 func (pm *ProviderManager) GetProviderInfo() []ProviderInfo {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
-	
+
 	var info []ProviderInfo
 	for _, provider := range pm.providers {
 		costEstimate := provider.GetCostEstimate(1000) // Cost for 1000 characters
@@ -230,13 +230,13 @@ func (pm *ProviderManager) TestAllProviders(ctx context.Context) map[string]erro
 	providers := make([]LLMProvider, len(pm.providers))
 	copy(providers, pm.providers)
 	pm.mu.RUnlock()
-	
+
 	results := make(map[string]error)
-	
+
 	for _, provider := range providers {
 		_, err := provider.GenerateText(ctx, "Test prompt", models.ProcessingOptions{})
 		results[provider.GetName()] = err
 	}
-	
+
 	return results
 }

@@ -104,7 +104,7 @@ func (r *ProcessingJobRepository) UpdateJob(id string, updates map[string]interf
 // UpdateJobStatus updates the status of a processing job
 func (r *ProcessingJobRepository) UpdateJobStatus(id, status string) (*models.ProcessingJobDB, error) {
 	updates := map[string]interface{}{"status": status}
-	
+
 	// Add timestamps based on status
 	now := time.Now()
 	switch status {
@@ -128,9 +128,9 @@ func (r *ProcessingJobRepository) UpdateJobProgress(id string, progress int) (*m
 // UpdateJobError updates the error message of a processing job
 func (r *ProcessingJobRepository) UpdateJobError(id, errorMessage string) (*models.ProcessingJobDB, error) {
 	updates := map[string]interface{}{
-		"status":    "failed",
-		"error":     &errorMessage,
-		"progress":  0,
+		"status":   "failed",
+		"error":    &errorMessage,
+		"progress": 0,
 	}
 	return r.UpdateJob(id, updates)
 }
@@ -186,7 +186,7 @@ func ParseJobOptions(optionsJSON string) (*JobOptions, error) {
 			Quality:         "standard",
 		}, nil
 	}
-	
+
 	var options JobOptions
 	if err := json.Unmarshal([]byte(optionsJSON), &options); err != nil {
 		return nil, fmt.Errorf("failed to parse job options: %w", err)
@@ -199,7 +199,7 @@ func SerializeJobOptions(options *JobOptions) (string, error) {
 	if options == nil {
 		return "", nil
 	}
-	
+
 	data, err := json.Marshal(options)
 	if err != nil {
 		return "", fmt.Errorf("failed to serialize job options: %w", err)

@@ -53,11 +53,11 @@ func startServer() {
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
-	
+
 	// Initialize database
 	dbConfig := database.DefaultConfig()
 	dbConfig.Debug = gin.Mode() == gin.DebugMode
-	
+
 	db, err := database.NewDatabase(dbConfig)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
@@ -77,7 +77,7 @@ func startServer() {
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 	r.Use(metrics.Middleware())
-	
+
 	// Add a middleware to log all requests
 	r.Use(func(c *gin.Context) {
 		path := c.Request.URL.Path
@@ -88,19 +88,19 @@ func startServer() {
 
 	// Initialize authentication
 	authMiddleware := middleware.NewAuthMiddleware()
-	
+
 	// Initialize services
 	authService := services.NewAuthService(db.GetGormDB(), authMiddleware)
-	
+
 	// Initialize job queue
 	jobQueue := jobs.NewJobQueue(db.GetGormDB(), 4) // 4 workers
-	
+
 	// Initialize storage manager
 	storageManager, err := filestorage.NewStorageManagerWithDefault(filestorage.DefaultStorageConfig())
 	if err != nil {
 		log.Fatalf("Failed to initialize storage: %v", err)
 	}
-	
+
 	jobCtx := &jobs.JobContext{
 		Queue:           jobQueue,
 		Storage:         storageManager.DefaultProvider(),
@@ -108,7 +108,7 @@ func startServer() {
 		CourseGenerator: pipeline.NewCourseGenerator(),
 	}
 	jobCtx.RegisterDefaultHandlers()
-	
+
 	// Start job queue
 	if err := jobQueue.Start(); err != nil {
 		log.Fatalf("Failed to start job queue: %v", err)
@@ -120,7 +120,7 @@ func startServer() {
 	authHandler := api.NewAuthHandler(authService, authMiddleware)
 	jobHandler := api.NewJobHandler(jobQueue)
 	courseAPIService := api.NewCourseAPIService(courseHandler)
-	
+
 	// Rate limiting middleware
 	rateLimiter := middleware.NewRateLimiter(100, time.Minute) // 100 requests per minute
 
@@ -129,12 +129,12 @@ func startServer() {
 	v1.Use(rateLimiter.Middleware())
 	{
 		v1.GET("/health", courseHandler.HealthCheck)
-		
+
 		// Public course routes
 		publicCourses := v1.Group("/public")
 		courseAPIService.RegisterCourseAPIRoutes(publicCourses)
-		
-		// Authentication routes
+
+		// Authentication routes (public)
 		fmt.Printf("About to register auth routes...\n")
 		authGroup := v1.Group("/auth")
 		{
@@ -169,12 +169,12 @@ func startServer() {
 		}
 
 		// User profile routes
-		authGroup := protected.Group("/auth")
+		profileGroup := protected.Group("/auth")
 		{
-			authGroup.GET("/profile", authHandler.GetProfile)
-			authGroup.PUT("/profile", authHandler.UpdateProfile)
-			authGroup.PUT("/password", authHandler.UpdatePassword)
-			authGroup.POST("/logout", authHandler.Logout)
+			profileGroup.GET("/profile", authHandler.GetProfile)
+			profileGroup.PUT("/profile", authHandler.UpdateProfile)
+			profileGroup.PUT("/password", authHandler.UpdatePassword)
+			profileGroup.POST("/logout", authHandler.Logout)
 		}
 	}
 

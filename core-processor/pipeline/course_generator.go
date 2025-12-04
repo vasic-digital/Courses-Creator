@@ -7,19 +7,19 @@ import (
 	"time"
 
 	"github.com/course-creator/core-processor/config"
+	storage "github.com/course-creator/core-processor/filestorage"
 	"github.com/course-creator/core-processor/llm"
 	"github.com/course-creator/core-processor/models"
-	storage "github.com/course-creator/core-processor/filestorage"
 	"github.com/course-creator/core-processor/utils"
 )
 
 // CourseGenerator orchestrates the entire course generation process
 type CourseGenerator struct {
-	ttsProcessor    *TTSProcessor
-	videoAssembler  *VideoAssembler
+	ttsProcessor     *TTSProcessor
+	videoAssembler   *VideoAssembler
 	diagramProcessor *DiagramProcessor
-	contentGen      *llm.CourseContentGenerator
-	storage         *storage.StorageManager
+	contentGen       *llm.CourseContentGenerator
+	storage          *storage.StorageManager
 }
 
 // NewCourseGenerator creates a new course generator
@@ -41,14 +41,14 @@ func NewCourseGenerator() *CourseGenerator {
 			DefaultProvider:   "ollama",
 			MaxCostPerRequest: 1.0,
 			PrioritizeQuality: true,
-			AllowPaid:        true,
+			AllowPaid:         true,
 			Ollama: config.OllamaConfig{
-				BaseURL:     "http://localhost:11434",
+				BaseURL:      "http://localhost:11434",
 				DefaultModel: "llama2",
 			},
 		},
 	}
-	
+
 	factory := NewPipelineFactory(cfg)
 	return factory.NewCourseGenerator()
 }
@@ -175,7 +175,7 @@ func (cg *CourseGenerator) generateLesson(ctx context.Context, section models.Pa
 
 	// Generate lesson ID
 	lessonID := fmt.Sprintf("lesson_%d", utils.HashString(section.Content))
-	
+
 	// Create video - need course ID for storage
 	courseID := fmt.Sprintf("course_%d", utils.HashString(courseContent))
 	videoPath, err := cg.videoAssembler.CreateVideo(audioPath, enhancedContent, courseID, lessonID, options)
@@ -190,7 +190,7 @@ func (cg *CourseGenerator) generateLesson(ctx context.Context, section models.Pa
 		VideoURL:            &videoPath,
 		AudioURL:            &audioPath,
 		Diagrams:            diagrams,
-		InteractiveElements:  parseInteractiveElements(interactiveElements),
+		InteractiveElements: parseInteractiveElements(interactiveElements),
 		Order:               section.Order,
 	}
 

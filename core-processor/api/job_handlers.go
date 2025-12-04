@@ -50,7 +50,7 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format",
+			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
 		return
@@ -69,7 +69,7 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 		jobType = jobs.JobTypeSubtitleGeneration
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid job type",
+			"error":       "Invalid job type",
 			"valid_types": []string{"course_generation", "video_processing", "audio_generation", "subtitle_generation"},
 		})
 		return
@@ -91,7 +91,7 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 	job, err := h.jobQueue.Enqueue(c.Request.Context(), jobType, userID.(string), req.Payload, priority)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create job",
+			"error":   "Failed to create job",
 			"details": err.Error(),
 		})
 		return
@@ -125,7 +125,7 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 	job, err := h.jobQueue.GetJob(c.Request.Context(), jobID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Job not found",
+			"error":   "Job not found",
 			"details": err.Error(),
 		})
 		return
@@ -134,7 +134,7 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 	// Check if user owns this job or is admin
 	userRole, _ := c.Get("user_role")
 	userID, _ := c.Get("user_id")
-	
+
 	if job.UserID != userID.(string) && userRole != "admin" {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": "Access denied to this job",
@@ -185,7 +185,7 @@ func (h *JobHandler) GetUserJobs(c *gin.Context) {
 	jobs, err := h.jobQueue.GetUserJobs(c.Request.Context(), userID.(string), limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve jobs",
+			"error":   "Failed to retrieve jobs",
 			"details": err.Error(),
 		})
 		return
@@ -221,7 +221,7 @@ func (h *JobHandler) CancelJob(c *gin.Context) {
 	job, err := h.jobQueue.GetJob(c.Request.Context(), jobID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Job not found",
+			"error":   "Job not found",
 			"details": err.Error(),
 		})
 		return
@@ -230,7 +230,7 @@ func (h *JobHandler) CancelJob(c *gin.Context) {
 	// Check if user owns this job or is admin
 	userRole, _ := c.Get("user_role")
 	userID, _ := c.Get("user_id")
-	
+
 	if job.UserID != userID.(string) && userRole != "admin" {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": "Access denied to this job",
@@ -241,7 +241,7 @@ func (h *JobHandler) CancelJob(c *gin.Context) {
 	// Cancel job
 	if err := h.jobQueue.CancelJob(c.Request.Context(), jobID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to cancel job",
+			"error":   "Failed to cancel job",
 			"details": err.Error(),
 		})
 		return
@@ -282,7 +282,7 @@ func (h *JobHandler) UpdateJobProgress(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format",
+			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
 		return
@@ -291,7 +291,7 @@ func (h *JobHandler) UpdateJobProgress(c *gin.Context) {
 	// Update job progress
 	if err := h.jobQueue.UpdateProgress(jobID, req.Progress); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update job progress",
+			"error":   "Failed to update job progress",
 			"details": err.Error(),
 		})
 		return
@@ -311,9 +311,9 @@ func (h *JobHandler) UpdateJobProgress(c *gin.Context) {
 // @Router /api/v1/jobs/types [get]
 func (h *JobHandler) GetJobTypes(c *gin.Context) {
 	jobTypes := map[string]string{
-		"course_generation":  "Generate complete course from markdown",
-		"video_processing":  "Process video components",
-		"audio_generation":   "Generate audio from text",
+		"course_generation":   "Generate complete course from markdown",
+		"video_processing":    "Process video components",
+		"audio_generation":    "Generate audio from text",
 		"subtitle_generation": "Generate subtitles from audio",
 	}
 
@@ -361,11 +361,11 @@ func (h *JobHandler) GetSystemJobs(c *gin.Context) {
 	// For now, return a simplified response
 	c.JSON(http.StatusOK, gin.H{
 		"message": "System jobs endpoint - implement with proper database filtering",
-		"limit": limit,
-		"offset": offset,
+		"limit":   limit,
+		"offset":  offset,
 		"filters": map[string]string{
 			"status": c.Query("status"),
-			"type": c.Query("type"),
+			"type":   c.Query("type"),
 		},
 	})
 }

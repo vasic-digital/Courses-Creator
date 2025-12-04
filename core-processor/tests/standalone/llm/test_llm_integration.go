@@ -31,10 +31,10 @@ func TestLLMIntegration(t *testing.T) {
 	// Test providers with a simple prompt
 	ctx := context.Background()
 	testPrompt := "Explain quantum computing in one sentence."
-	
+
 	fmt.Println("\nTesting providers with prompt:", testPrompt)
 	fmt.Println("----------------------------------------")
-	
+
 	// Test using fallback mechanism
 	response, err := llmManager.GenerateWithFallback(ctx, testPrompt, models.ProcessingOptions{
 		Quality: "standard",
@@ -48,9 +48,9 @@ func TestLLMIntegration(t *testing.T) {
 	// Test content generator
 	fmt.Println("\nTesting Course Content Generator:")
 	fmt.Println("----------------------------------")
-	
+
 	contentGen := llm.NewCourseContentGenerator(&cfg.LLM)
-	
+
 	// Test title generation
 	sampleContent := `
 # Introduction to Machine Learning
@@ -82,7 +82,7 @@ Machine learning is a subset of artificial intelligence that enables systems to 
 	// Test lesson enhancement
 	lessonContent := `## Python Basics
 Python is a programming language.`
-	
+
 	enhanced, err := contentGen.GenerateLessonContent(ctx, "Python Basics", lessonContent)
 	if err != nil {
 		fmt.Printf("Failed to enhance lesson: %v\n", err)

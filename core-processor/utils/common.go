@@ -2,12 +2,12 @@ package utils
 
 import (
 	"context"
-	"os/exec"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"

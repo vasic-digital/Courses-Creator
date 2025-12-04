@@ -61,7 +61,7 @@ func BenchmarkJobQueue_GetJob(b *testing.B) {
 	for i := 0; i < 1000; i++ {
 		jobID := fmt.Sprintf("job-%d", i)
 		testJobs[i] = jobID
-		queue.Enqueue(context.Background(), jobs.JobTypeVideoProcessing, "test-user", 
+		queue.Enqueue(context.Background(), jobs.JobTypeVideoProcessing, "test-user",
 			map[string]interface{}{"test": "data"}, jobs.JobPriorityNormal)
 	}
 
@@ -150,12 +150,12 @@ func TestJobQueuePerformance(t *testing.T) {
 
 			// Performance assertions
 			if opsPerSec < tt.minOpsPerSec {
-				t.Errorf("Performance below threshold: %.2f ops/sec < %.2f ops/sec", 
+				t.Errorf("Performance below threshold: %.2f ops/sec < %.2f ops/sec",
 					opsPerSec, tt.minOpsPerSec)
 			}
 
 			if float64(memUsed) > tt.maxMemMB {
-				t.Errorf("Memory usage above threshold: %d MB > %.2f MB", 
+				t.Errorf("Memory usage above threshold: %d MB > %.2f MB",
 					memUsed, tt.maxMemMB)
 			}
 		})
@@ -213,7 +213,7 @@ func TestJobQueueScalability(t *testing.T) {
 				t.Errorf("Enqueue rate too low: %.2f jobs/sec < 1000 jobs/sec", enqueueRate)
 			}
 
-			memPerJob := float64(memUsed)*1024 / float64(count)
+			memPerJob := float64(memUsed) * 1024 / float64(count)
 			if memPerJob > 10 { // 10 KB per job
 				t.Errorf("Memory per job too high: %.2f KB/job > 10 KB/job", memPerJob)
 			}
@@ -315,7 +315,7 @@ func TestJobQueueMemoryLeak(t *testing.T) {
 
 	// Memory leak assertion
 	if memIncrease > 100 { // Allow some memory increase but not excessive
-		t.Errorf("Potential memory leak detected: %d MB increase after %d operations", 
+		t.Errorf("Potential memory leak detected: %d MB increase after %d operations",
 			memIncrease, iterations)
 	}
 }

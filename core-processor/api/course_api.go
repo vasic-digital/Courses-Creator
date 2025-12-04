@@ -30,19 +30,19 @@ func NewCourseAPIService(handler *CourseHandler) *CourseAPIService {
 func (s *CourseAPIService) GetCoursesAPI(c *gin.Context) {
 	// Parse query parameters
 	params := make(map[string]interface{})
-	
+
 	if page := c.Query("page"); page != "" {
 		if p, err := strconv.Atoi(page); err == nil {
 			params["page"] = p
 		}
 	}
-	
+
 	if pageSize := c.Query("pageSize"); pageSize != "" {
 		if ps, err := strconv.Atoi(pageSize); err == nil {
 			params["pageSize"] = ps
 		}
 	}
-	
+
 	if search := c.Query("search"); search != "" {
 		params["search"] = search
 	}
@@ -83,7 +83,7 @@ func (s *CourseAPIService) GenerateCourseAPI(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "markdown is required"})
 		return
 	}
-	
+
 	// Validate markdown content for security issues
 	if !services.ValidateContent(req.Markdown) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid content detected"})
@@ -104,25 +104,21 @@ func (s *CourseAPIService) GenerateCourseAPI(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create temp directory"})
 		return
 	}
-	
+
 	markdownFile := filepath.Join(tempDir, "content.md")
 	if err := ioutil.WriteFile(markdownFile, []byte(req.Markdown), 0644); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write markdown file"})
 		return
 	}
-	
+
 	outputDir := filepath.Join(tempDir, "output")
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create output directory"})
 		return
 	}
 
-	// Get user ID from context (for future use in user-specific job tracking)
-	_, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
+	// Get user ID from context (optional - public route doesn't require auth)
+	// No authentication check for public route - userID will be empty if not authenticated
 
 	// Create a processing job
 	jobOptions := &repository.JobOptions{

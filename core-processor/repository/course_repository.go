@@ -195,12 +195,12 @@ func (r *CourseRepository) UpdateCourse(id string, course *models.Course) (*mode
 		} else {
 			// Update existing metadata
 			if err := tx.Model(&existing.Metadata).Updates(map[string]interface{}{
-				"author":          course.Metadata.Author,
-				"language":        course.Metadata.Language,
-				"tags":            string(tagsJSON),
-				"thumbnail_url":   course.Metadata.ThumbnailURL,
-				"total_duration":  course.Metadata.TotalDuration,
-				"updated_at":      time.Now(),
+				"author":         course.Metadata.Author,
+				"language":       course.Metadata.Language,
+				"tags":           string(tagsJSON),
+				"thumbnail_url":  course.Metadata.ThumbnailURL,
+				"total_duration": course.Metadata.TotalDuration,
+				"updated_at":     time.Now(),
 			}).Error; err != nil {
 				tx.Rollback()
 				return nil, fmt.Errorf("failed to update course metadata: %w", err)

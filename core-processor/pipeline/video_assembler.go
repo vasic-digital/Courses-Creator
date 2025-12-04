@@ -9,19 +9,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/course-creator/core-processor/models"
 	storage "github.com/course-creator/core-processor/filestorage"
+	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/utils"
 )
 
 // VideoQuality represents video quality settings
 type VideoQuality struct {
-	Width        int
-	Height       int
-	Bitrate      string
-	Framerate    int
-	Codec        string
-	PixelFormat  string
+	Width       int
+	Height      int
+	Bitrate     string
+	Framerate   int
+	Codec       string
+	PixelFormat string
 }
 
 // VideoConfig holds video assembly configuration
@@ -41,17 +41,17 @@ type VideoConfig struct {
 type BackgroundStyle string
 
 const (
-	BackgroundSolidColor  BackgroundStyle = "solid"
-	BackgroundGradient    BackgroundStyle = "gradient"
+	BackgroundSolidColor BackgroundStyle = "solid"
+	BackgroundGradient   BackgroundStyle = "gradient"
 	BackgroundPattern    BackgroundStyle = "pattern"
 	BackgroundAnimated   BackgroundStyle = "animated"
 )
 
 // VideoAssembler handles video assembly from audio and visual elements
 type VideoAssembler struct {
-	Config           VideoConfig
-	storage          storage.StorageInterface
-	backgroundGen    *BackgroundGenerator
+	Config        VideoConfig
+	storage       storage.StorageInterface
+	backgroundGen *BackgroundGenerator
 }
 
 // NewVideoAssembler creates a new video assembler
@@ -90,7 +90,7 @@ func NewVideoAssembler(storage storage.StorageInterface) *VideoAssembler {
 func NewVideoAssemblerWithConfig(config VideoConfig, storage storage.StorageInterface) *VideoAssembler {
 	utils.EnsureDir(config.OutputDir)
 	utils.EnsureDir(config.TempDir)
-	
+
 	return &VideoAssembler{
 		Config:        config,
 		storage:       storage,
@@ -138,13 +138,13 @@ func (va *VideoAssembler) CreateVideo(
 	if err := va.assembleVideo(ctx, audioPath, backgroundPath, segments, tempOutputPath, options); err != nil {
 		return "", fmt.Errorf("failed to assemble video: %w", err)
 	}
-	
+
 	// Read the video file and save to storage
 	videoData, err := os.ReadFile(tempOutputPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read video file: %w", err)
 	}
-	
+
 	// Save to storage
 	err = va.storage.Save(storagePath, videoData)
 	if err != nil {
@@ -250,7 +250,7 @@ func (va *VideoAssembler) createTextOverlayFilter(segments []TextSegment, option
 	for _, segment := range segments {
 		// Escape special characters in text
 		escapedText := va.escapeFFmpegText(segment.Text)
-		
+
 		// Calculate text properties based on quality
 		fontSize := 48
 		if options.Quality == "high" {
@@ -278,15 +278,15 @@ func (va *VideoAssembler) createTextOverlayFilter(segments []TextSegment, option
 func (va *VideoAssembler) escapeFFmpegText(text string) string {
 	// Escape special characters for FFmpeg
 	replacements := map[string]string{
-		"'":  "\\'",
-		":":  "\\:",
-		"[":  "\\[",
-		"]":  "\\]",
-		",":  "\\,",
-		";":  "\\;",
-		"(":  "\\(",
-		")":  "\\)",
-		"%":  "\\%",
+		"'": "\\'",
+		":": "\\:",
+		"[": "\\[",
+		"]": "\\]",
+		",": "\\,",
+		";": "\\;",
+		"(": "\\(",
+		")": "\\)",
+		"%": "\\%",
 	}
 
 	escaped := text
@@ -356,12 +356,12 @@ func (va *VideoAssembler) AddSubtitles(ctx context.Context, videoPath string, su
 // createSRTSubtitleFile creates an SRT subtitle file
 func (va *VideoAssembler) createSRTSubtitleFile(path string, subtitles []models.Subtitle) error {
 	var content strings.Builder
-	
+
 	for _, subtitle := range subtitles {
 		for i, timestampMap := range subtitle.Timestamps {
 			startTime := va.formatSRTTime(timestampMap["start"].(float64))
 			endTime := va.formatSRTTime(timestampMap["end"].(float64))
-			
+
 			content.WriteString(fmt.Sprintf("%d\n", i+1))
 			content.WriteString(fmt.Sprintf("%s --> %s\n", startTime, endTime))
 			content.WriteString(fmt.Sprintf("%s\n\n", timestampMap["text"].(string)))
@@ -377,7 +377,7 @@ func (va *VideoAssembler) formatSRTTime(seconds float64) string {
 	minutes := (int(seconds) % 3600) / 60
 	secs := int(seconds) % 60
 	millis := int((seconds - float64(int(seconds))) * 1000)
-	
+
 	return fmt.Sprintf("%02d:%02d:%02d,%03d", hours, minutes, secs, millis)
 }
 

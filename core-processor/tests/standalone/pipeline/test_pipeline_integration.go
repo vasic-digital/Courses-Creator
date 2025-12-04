@@ -63,7 +63,7 @@ Machine Learning is a subset of AI that enables systems to learn from data.`
 				DefaultProvider:   "ollama",
 				MaxCostPerRequest: 1.0,
 				PrioritizeQuality: true,
-				AllowPaid:        false, // Don't use paid providers for testing
+				AllowPaid:         false, // Don't use paid providers for testing
 				Ollama: config.OllamaConfig{
 					BaseURL:      "http://localhost:11434",
 					DefaultModel: "llama2",
@@ -123,20 +123,20 @@ func testPipelineWithMockTTS(markdownPath, outputDir string, cfg *config.Config)
 
 	// Get components
 	llmManager := factory.GetLLMManager()
-	
+
 	// Add a free provider for testing
 	freeProvider := llm.NewFreeProvider("pipeline-test", "", "")
 	llmManager.RegisterProvider(freeProvider)
-	
+
 	// Test LLM integration
 	ctx := context.Background()
-	
+
 	// Test title generation
 	fmt.Println("Testing LLM content generation...")
 	title, err := llmManager.GenerateWithFallback(ctx, "Generate a title for a course about AI", models.ProcessingOptions{
 		Quality: "standard",
 	})
-	
+
 	if err != nil {
 		fmt.Printf("Title generation failed: %v\n", err)
 		title = "AI Fundamentals" // Fallback
@@ -148,7 +148,7 @@ func testPipelineWithMockTTS(markdownPath, outputDir string, cfg *config.Config)
 	description, err := llmManager.GenerateWithFallback(ctx, "Generate a description for a course titled '"+title+"'", models.ProcessingOptions{
 		Quality: "standard",
 	})
-	
+
 	if err != nil {
 		fmt.Printf("Description generation failed: %v\n", err)
 		description = "A comprehensive course about AI fundamentals"

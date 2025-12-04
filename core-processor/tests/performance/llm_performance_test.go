@@ -49,7 +49,7 @@ func BenchmarkOllamaProvider_GenerateText(b *testing.B) {
 
 func BenchmarkProviderManager_GenerateWithFallback(b *testing.B) {
 	manager := llm.NewProviderManager(nil)
-	
+
 	// Add mock providers for benchmarking
 	mockProvider1 := llm.NewFreeProvider("Mock1", "", "")
 	mockProvider2 := llm.NewFreeProvider("Mock2", "", "")
@@ -68,7 +68,7 @@ func BenchmarkProviderManager_GenerateWithFallback(b *testing.B) {
 
 func BenchmarkProviderManager_GetBestProvider(b *testing.B) {
 	manager := llm.NewProviderManager(nil)
-	
+
 	// Add multiple providers
 	for i := 0; i < 10; i++ {
 		provider := llm.NewFreeProvider(fmt.Sprintf("Provider%d", i), "", "")
@@ -78,7 +78,7 @@ func BenchmarkProviderManager_GetBestProvider(b *testing.B) {
 	preferences := llm.ProviderPreferences{
 		PreferredType:     llm.ProviderTypeFree,
 		MaxCostPerRequest: 0.10,
-		PrioritizeQuality:  false,
+		PrioritizeQuality: false,
 		AllowPaid:         false,
 	}
 
@@ -156,12 +156,12 @@ func TestLLMPerformance(t *testing.T) {
 
 			// Performance assertions
 			if opsPerSec < tt.minOpsPerSec {
-				t.Errorf("Performance below threshold: %.2f ops/sec < %.2f ops/sec", 
+				t.Errorf("Performance below threshold: %.2f ops/sec < %.2f ops/sec",
 					opsPerSec, tt.minOpsPerSec)
 			}
 
 			if float64(memUsed) > tt.maxMemMB {
-				t.Errorf("Memory usage above threshold: %d MB > %.2f MB", 
+				t.Errorf("Memory usage above threshold: %d MB > %.2f MB",
 					memUsed, tt.maxMemMB)
 			}
 		})
@@ -170,7 +170,7 @@ func TestLLMPerformance(t *testing.T) {
 
 func TestConcurrentProviderAccess(t *testing.T) {
 	manager := llm.NewProviderManager(nil)
-	
+
 	// Add multiple providers
 	for i := 0; i < 5; i++ {
 		provider := llm.NewFreeProvider(fmt.Sprintf("Provider%d", i), "", "")
@@ -222,7 +222,7 @@ func TestConcurrentProviderAccess(t *testing.T) {
 
 func TestMemoryLeakDetection(t *testing.T) {
 	manager := llm.NewProviderManager(nil)
-	
+
 	// Add a provider
 	provider := llm.NewFreeProvider("TestProvider", "", "")
 	manager.RegisterProvider(provider)
@@ -254,7 +254,7 @@ func TestMemoryLeakDetection(t *testing.T) {
 
 	// Memory leak assertion
 	if memIncrease > 50 { // Allow some memory increase but not excessive
-		t.Errorf("Potential memory leak detected: %d MB increase after %d operations", 
+		t.Errorf("Potential memory leak detected: %d MB increase after %d operations",
 			memIncrease, iterations)
 	}
 }

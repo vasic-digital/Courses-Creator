@@ -7,7 +7,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	
+
 	"github.com/course-creator/core-processor/models"
 )
 
@@ -18,9 +18,9 @@ type DB struct {
 
 // Config holds database configuration
 type Config struct {
-	Path   string
-	Debug  bool
-	Env    string // "development", "production", "test"
+	Path  string
+	Debug bool
+	Env   string // "development", "production", "test"
 }
 
 // DefaultConfig returns a default database configuration

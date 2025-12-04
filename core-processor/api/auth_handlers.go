@@ -38,7 +38,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	var req services.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format",
+			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
 		return
@@ -71,7 +71,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var req services.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format",
+			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
 		return
@@ -103,10 +103,10 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	var req struct {
 		RefreshToken string `json:"refresh_token" binding:"required"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format",
+			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
 		return
@@ -145,7 +145,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	err := h.authService.Logout(c.Request.Context(), userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to logout",
+			"error":   "Failed to logout",
 			"details": err.Error(),
 		})
 		return
@@ -178,7 +178,7 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 	user, err := h.authService.GetUserByID(c.Request.Context(), userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get user profile",
+			"error":   "Failed to get user profile",
 			"details": err.Error(),
 		})
 		return
@@ -212,7 +212,7 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 	var updates map[string]interface{}
 	if err := c.ShouldBindJSON(&updates); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format",
+			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
 		return
@@ -221,7 +221,7 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 	user, err := h.authService.UpdateUser(c.Request.Context(), userID.(string), updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update profile",
+			"error":   "Failed to update profile",
 			"details": err.Error(),
 		})
 		return
@@ -256,10 +256,10 @@ func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 		CurrentPassword string `json:"current_password" binding:"required"`
 		NewPassword     string `json:"new_password" binding:"required,min=8"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format",
+			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
 		return
@@ -295,15 +295,15 @@ func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 func (h *AuthHandler) CreateUserByAdmin(c *gin.Context) {
 	// This endpoint requires admin permissions
 	// The middleware should have already verified this
-	
+
 	var req struct {
 		services.RegisterRequest
 		Role string `json:"role" binding:"required"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format",
+			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
 		return

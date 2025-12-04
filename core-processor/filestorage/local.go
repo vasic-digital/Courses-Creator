@@ -11,14 +11,14 @@ import (
 
 // LocalStorage implements StorageInterface for local filesystem
 type LocalStorage struct {
-	basePath string
+	basePath  string
 	publicURL string
 }
 
 // NewLocalStorage creates a new local storage instance
 func NewLocalStorage(config StorageConfig) *LocalStorage {
 	return &LocalStorage{
-		basePath: config.BasePath,
+		basePath:  config.BasePath,
 		publicURL: config.PublicURL,
 	}
 }
@@ -26,32 +26,32 @@ func NewLocalStorage(config StorageConfig) *LocalStorage {
 // Save writes data to local filesystem
 func (ls *LocalStorage) Save(path string, data []byte) error {
 	fullPath := filepath.Join(ls.basePath, path)
-	
+
 	// Create directory if it doesn't exist
 	dir := filepath.Dir(fullPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
-	
+
 	return os.WriteFile(fullPath, data, 0644)
 }
 
 // SaveReader writes data from a reader to local filesystem
 func (ls *LocalStorage) SaveReader(path string, reader io.Reader) error {
 	fullPath := filepath.Join(ls.basePath, path)
-	
+
 	// Create directory if it doesn't exist
 	dir := filepath.Dir(fullPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
-	
+
 	file, err := os.Create(fullPath)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
 	defer file.Close()
-	
+
 	_, err = io.Copy(file, reader)
 	return err
 }
@@ -78,19 +78,19 @@ func (ls *LocalStorage) Exists(path string) bool {
 // List returns a list of files in specified directory
 func (ls *LocalStorage) List(dir string) ([]string, error) {
 	fullDir := filepath.Join(ls.basePath, dir)
-	
+
 	entries, err := os.ReadDir(fullDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read directory: %w", err)
 	}
-	
+
 	var files []string
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			files = append(files, entry.Name())
 		}
 	}
-	
+
 	return files, nil
 }
 
@@ -105,7 +105,7 @@ func (ls *LocalStorage) GetURL(path string) string {
 	if ls.publicURL == "" {
 		return ""
 	}
-	
+
 	// Ensure path doesn't start with slash to avoid double slashes
 	cleanPath := strings.TrimPrefix(path, "/")
 	return fmt.Sprintf("%s/%s", strings.TrimSuffix(ls.publicURL, "/"), cleanPath)
@@ -128,7 +128,7 @@ func (ls *LocalStorage) GetFile(path string) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &File{
 		Path:     path,
 		Name:     filepath.Base(path),

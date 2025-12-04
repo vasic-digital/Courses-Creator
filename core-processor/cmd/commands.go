@@ -34,6 +34,15 @@ func StartServer() {
 	// Add middleware
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+	
+	// Add security headers middleware
+	r.Use(func(c *gin.Context) {
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("X-XSS-Protection", "1; mode=block")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Next()
+	})
 
 	// Initialize authentication
 	authMiddleware := middleware.NewAuthMiddleware()
@@ -130,13 +139,13 @@ func GenerateCourse(markdownFile, outputDir string) {
 func SetupRouter() *gin.Engine {
 	// Set Gin mode to test mode
 	gin.SetMode(gin.TestMode)
-	
+
 	// Create Gin router
 	r := gin.New()
-	
+
 	// Add middleware
 	r.Use(gin.Recovery())
-	
+
 	// Add security headers middleware
 	r.Use(func(c *gin.Context) {
 		c.Header("X-Content-Type-Options", "nosniff")
@@ -145,11 +154,11 @@ func SetupRouter() *gin.Engine {
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 		c.Next()
 	})
-	
+
 	// Add a simple health check route for testing
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
-	
+
 	return r
 }

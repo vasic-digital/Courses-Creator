@@ -14,7 +14,7 @@ import (
 func setupTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
-	
+
 	// Get underlying SQL DB to configure SQLite
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
@@ -26,7 +26,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	require.NoError(t, err)
 	_, err = sqlDB.Exec("PRAGMA journal_mode = WAL")
 	require.NoError(t, err)
-	
+
 	// Migrate all tables
 	err = db.AutoMigrate(
 		&models.UserDB{},
@@ -41,7 +41,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&models.ProcessingJobDB{},
 	)
 	require.NoError(t, err)
-	
+
 	// Add BeforeCreate hooks for UUID generation
 	db.Callback().Create().Before("gorm:create").Register("generate_user_id", func(db *gorm.DB) {
 		if user, ok := db.Statement.Dest.(*models.UserDB); ok {
@@ -50,6 +50,6 @@ func setupTestDB(t *testing.T) *gorm.DB {
 			}
 		}
 	})
-	
+
 	return db
 }

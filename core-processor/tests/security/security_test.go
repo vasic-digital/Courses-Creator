@@ -53,14 +53,14 @@ func TestSQLInjection(t *testing.T) {
 				"email":    tc.input,
 				"password": "password123",
 			}
-			
+
 			// Validate email input directly
 			err := services.ValidateLoginInput(loginData["email"], loginData["password"])
-			
+
 			if tc.shouldBlock && err == nil {
 				t.Errorf("Expected SQL injection to be blocked but was allowed: %s", tc.input)
 			}
-			
+
 			if !tc.shouldBlock && err != nil {
 				t.Errorf("Expected valid input to be allowed but was blocked: %s", tc.input)
 			}
@@ -110,11 +110,11 @@ func TestXSSPrevention(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Test content validation
 			isValid := services.ValidateContent(tc.input)
-			
+
 			if tc.shouldBlock && isValid {
 				t.Errorf("Expected XSS attempt to be blocked but was allowed: %s", tc.input)
 			}
-			
+
 			if !tc.shouldBlock && !isValid {
 				t.Errorf("Expected valid content to be allowed but was blocked: %s", tc.input)
 			}
@@ -133,54 +133,54 @@ func TestAuthenticationSecurity(t *testing.T) {
 			name:        "Valid credentials",
 			email:       "user@example.com",
 			password:    "validPassword123!",
-			expectError:  false,
+			expectError: false,
 		},
 		{
 			name:        "Weak password",
 			email:       "user@example.com",
 			password:    "123",
-			expectError:  true,
+			expectError: true,
 		},
 		{
 			name:        "Common password",
 			email:       "user@example.com",
 			password:    "password",
-			expectError:  true,
+			expectError: true,
 		},
 		{
 			name:        "Password without numbers",
 			email:       "user@example.com",
 			password:    "passwordOnly",
-			expectError:  true,
+			expectError: true,
 		},
 		{
 			name:        "Password without uppercase",
 			email:       "user@example.com",
 			password:    "password123!",
-			expectError:  true,
+			expectError: true,
 		},
 		{
 			name:        "Password without special chars",
 			email:       "user@example.com",
 			password:    "Password123",
-			expectError:  true,
+			expectError: true,
 		},
 		{
 			name:        "Valid strong password",
 			email:       "user@example.com",
 			password:    "StrongP@ssw0rd123!",
-			expectError:  false,
+			expectError: false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := services.ValidatePasswordStrength(tc.password)
-			
+
 			if tc.expectError && err == nil {
 				t.Errorf("Expected weak password to be rejected but was accepted: %s", tc.password)
 			}
-			
+
 			if !tc.expectError && err != nil {
 				t.Errorf("Expected strong password to be accepted but was rejected: %s", tc.password)
 			}
@@ -191,7 +191,7 @@ func TestAuthenticationSecurity(t *testing.T) {
 func TestRateLimiting(t *testing.T) {
 	// Test rate limiting on sensitive endpoints
 	rateLimiter := services.NewRateLimiter(5, time.Minute) // 5 requests per minute
-	
+
 	testCases := []struct {
 		name        string
 		numRequests int
@@ -218,10 +218,10 @@ func TestRateLimiting(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create a unique IP for each test to avoid interference
 			ipAddress := fmt.Sprintf("192.168.1.%d", 1+len(t.Name())%10)
-			
+
 			for i := 0; i < tc.numRequests; i++ {
 				allowed := rateLimiter.Allow(ipAddress)
-				
+
 				if tc.shouldLimit {
 					// For tests that should hit the limit
 					if i < 5 {
@@ -251,10 +251,10 @@ func TestCSRFProtection(t *testing.T) {
 	csrfService := services.NewCSRFService()
 
 	testCases := []struct {
-		name        string
-		token       string
-		sessionID   string
-		shouldPass  bool
+		name       string
+		token      string
+		sessionID  string
+		shouldPass bool
 	}{
 		{
 			name:       "Valid CSRF token",
@@ -263,22 +263,22 @@ func TestCSRFProtection(t *testing.T) {
 			shouldPass: true,
 		},
 		{
-			name:        "Invalid CSRF token",
-			token:       "invalid_token",
-			sessionID:   "session123",
-			shouldPass:  false,
+			name:       "Invalid CSRF token",
+			token:      "invalid_token",
+			sessionID:  "session123",
+			shouldPass: false,
 		},
 		{
-			name:        "Empty token",
-			token:       "",
-			sessionID:   "session123",
-			shouldPass:  false,
+			name:       "Empty token",
+			token:      "",
+			sessionID:  "session123",
+			shouldPass: false,
 		},
 		{
-			name:        "Token from different session",
-			token:       "",
-			sessionID:   "different_session",
-			shouldPass:  false,
+			name:       "Token from different session",
+			token:      "",
+			sessionID:  "different_session",
+			shouldPass: false,
 		},
 	}
 
@@ -290,11 +290,11 @@ func TestCSRFProtection(t *testing.T) {
 			}
 
 			valid := csrfService.ValidateToken(tc.token, tc.sessionID)
-			
+
 			if tc.shouldPass && !valid {
 				t.Errorf("Expected valid CSRF token to pass validation")
 			}
-			
+
 			if !tc.shouldPass && valid {
 				t.Errorf("Expected invalid CSRF token to fail validation")
 			}
@@ -356,11 +356,11 @@ func TestFileUploadSecurity(t *testing.T) {
 			}
 
 			allowed := services.ValidateFileUpload(file)
-			
+
 			if tc.shouldAllow && !allowed {
 				t.Errorf("Expected file upload to be allowed but was blocked: %s", tc.filename)
 			}
-			
+
 			if !tc.shouldAllow && allowed {
 				t.Errorf("Expected file upload to be blocked but was allowed: %s", tc.filename)
 			}
@@ -422,11 +422,11 @@ func TestInputValidation(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			allowed := services.ValidateInputField(tc.field, tc.value)
-			
+
 			if tc.shouldAllow && !allowed {
 				t.Errorf("Expected input to be allowed but was blocked: %s = %s", tc.field, tc.value)
 			}
-			
+
 			if !tc.shouldAllow && allowed {
 				t.Errorf("Expected input to be blocked but was allowed: %s = %s", tc.field, tc.value)
 			}
@@ -437,7 +437,7 @@ func TestInputValidation(t *testing.T) {
 func TestSecurityHeaders(t *testing.T) {
 	// Test that security headers are properly set
 	router := cmd.SetupRouter()
-	
+
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -447,7 +447,7 @@ func TestSecurityHeaders(t *testing.T) {
 	// Check for security headers
 	requiredHeaders := map[string]string{
 		"X-Content-Type-Options": "nosniff",
-		"X-Frame-Options":       "DENY",
+		"X-Frame-Options":        "DENY",
 		"X-XSS-Protection":       "1; mode=block",
 		"Referrer-Policy":        "strict-origin-when-cross-origin",
 	}
@@ -457,7 +457,7 @@ func TestSecurityHeaders(t *testing.T) {
 		if actualValue == "" {
 			t.Errorf("Missing security header: %s", header)
 		} else if actualValue != expectedValue {
-			t.Errorf("Incorrect security header value for %s: got %s, want %s", 
+			t.Errorf("Incorrect security header value for %s: got %s, want %s",
 				header, actualValue, expectedValue)
 		}
 	}

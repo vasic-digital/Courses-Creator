@@ -26,15 +26,15 @@ import (
 func TestAPI_Integration(t *testing.T) {
 	// Setup test environment
 	gin.SetMode(gin.TestMode)
-	
+
 	// Create test directories
 	tempDir := filepath.Join(os.TempDir(), "api_test")
 	outputDir := filepath.Join(os.TempDir(), "api_output")
-	
+
 	err := utils.EnsureDir(tempDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
-	
+
 	err = utils.EnsureDir(outputDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(outputDir)
@@ -69,7 +69,7 @@ API integration test complete.`
 	// Setup Gin router
 	router := gin.New()
 	handler := api.NewCourseHandler(db)
-	
+
 	v1 := router.Group("/api/v1")
 	{
 		v1.GET("/health", handler.HealthCheck)
@@ -85,7 +85,7 @@ API integration test complete.`
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		var response map[string]interface{}
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
@@ -95,10 +95,10 @@ API integration test complete.`
 	// Test course generation
 	t.Run("Generate Course", func(t *testing.T) {
 		t.Skip("Skipping course generation API test - requires TTS generation")
-		
+
 		requestBody := map[string]interface{}{
 			"markdown_path": markdownPath,
-			"output_dir":   outputDir,
+			"output_dir":    outputDir,
 			"options": map[string]interface{}{
 				"voice":            "bark",
 				"background_music": true,
@@ -109,11 +109,11 @@ API integration test complete.`
 
 		req, _ := http.NewRequest("POST", "/api/v1/courses/generate", nil)
 		req.Header.Set("Content-Type", "application/json")
-		
+
 		// Convert request body to JSON and set it
 		jsonBody, _ := json.Marshal(requestBody)
 		req.Body = io.NopCloser(strings.NewReader(string(jsonBody)))
-		
+
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
@@ -122,7 +122,7 @@ API integration test complete.`
 			var response map[string]interface{}
 			err = json.Unmarshal(w.Body.Bytes(), &response)
 			require.NoError(t, err)
-			
+
 			assert.Contains(t, response, "course_id")
 			assert.Contains(t, response, "status")
 		} else {
@@ -137,7 +137,7 @@ API integration test complete.`
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		var response map[string]interface{}
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
@@ -147,15 +147,15 @@ API integration test complete.`
 
 func TestPipeline_EndToEnd(t *testing.T) {
 	t.Skip("Skipping E2E test - requires TTS generation")
-	
+
 	// Setup test environment
 	tempDir := filepath.Join(os.TempDir(), "e2e_test")
 	outputDir := filepath.Join(os.TempDir(), "e2e_output")
-	
+
 	err := utils.EnsureDir(tempDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
-	
+
 	err = utils.EnsureDir(outputDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(outputDir)
@@ -235,12 +235,12 @@ This concludes our comprehensive end-to-end test course.`
 
 	// Create course generator
 	generator := pipeline.NewCourseGenerator()
-	
+
 	options := models.ProcessingOptions{
-		Quality:          "high",
-		Languages:        []string{"en", "es", "fr"},
-		BackgroundMusic:   true,
-		Voice:            stringPtr("v2/en_speaker_6"),
+		Quality:         "high",
+		Languages:       []string{"en", "es", "fr"},
+		BackgroundMusic: true,
+		Voice:           stringPtr("v2/en_speaker_6"),
 	}
 
 	ctx := context.Background()
@@ -266,11 +266,11 @@ This concludes our comprehensive end-to-end test course.`
 	case err := <-errCh:
 		if err != nil {
 			t.Logf("E2E test failed (may be expected): %v", err)
-			
+
 			// Check that error is related to missing dependencies
 			if strings.Contains(err.Error(), "failed to generate audio") ||
-			   strings.Contains(err.Error(), "failed to create video") ||
-			   strings.Contains(err.Error(), "ffmpeg") {
+				strings.Contains(err.Error(), "failed to create video") ||
+				strings.Contains(err.Error(), "ffmpeg") {
 				t.Skip("Skipping due to missing FFmpeg/TTS dependencies")
 			}
 			t.Fatalf("Unexpected error: %v", err)
@@ -278,25 +278,25 @@ This concludes our comprehensive end-to-end test course.`
 	case course := <-resultCh:
 		// Validate course structure
 		require.NotNil(t, course)
-		
+
 		// Validate basic course properties
 		assert.NotEmpty(t, course.ID)
 		assert.Equal(t, "End-to-End Test Course", course.Title)
 		assert.Contains(t, course.Description, "comprehensive test")
-		
+
 		// Validate lessons
 		assert.Len(t, course.Lessons, 5) // Overview + Technical + QA + UX + Conclusion
-		
+
 		lessonTitles := make([]string, len(course.Lessons))
 		for i, lesson := range course.Lessons {
 			lessonTitles[i] = lesson.Title
-			
+
 			// Validate lesson structure
 			assert.NotEmpty(t, lesson.ID)
 			assert.NotEmpty(t, lesson.Title)
 			assert.NotEmpty(t, lesson.Content)
 			assert.Greater(t, lesson.Order, 0)
-			
+
 			// Check for generated media (may not exist if dependencies missing)
 			if lesson.VideoURL != nil && utils.FileExists(*lesson.VideoURL) {
 				// Verify video file properties
@@ -304,7 +304,7 @@ This concludes our comprehensive end-to-end test course.`
 				require.NoError(t, err)
 				assert.Greater(t, size, int64(0))
 			}
-			
+
 			if lesson.AudioURL != nil && utils.FileExists(*lesson.AudioURL) {
 				// Verify audio file properties
 				size, err := utils.GetFileSize(*lesson.AudioURL)
@@ -312,7 +312,7 @@ This concludes our comprehensive end-to-end test course.`
 				assert.Greater(t, size, int64(0))
 			}
 		}
-		
+
 		// Validate expected lesson titles
 		expectedTitles := []string{
 			"Module 1: System Overview",
@@ -321,11 +321,11 @@ This concludes our comprehensive end-to-end test course.`
 			"Module 4: User Experience",
 			"Conclusion",
 		}
-		
+
 		for _, expected := range expectedTitles {
 			assert.Contains(t, lessonTitles, expected)
 		}
-		
+
 		t.Log("End-to-end test completed successfully!")
 	}
 }
@@ -334,11 +334,11 @@ func TestFileProcessing_Integration(t *testing.T) {
 	// Test file processing pipeline integration
 	tempDir := filepath.Join(os.TempDir(), "file_test")
 	outputDir := filepath.Join(os.TempDir(), "file_output")
-	
+
 	err := utils.EnsureDir(tempDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
-	
+
 	err = utils.EnsureDir(outputDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(outputDir)
@@ -353,29 +353,29 @@ func TestFileProcessing_Integration(t *testing.T) {
 	t.Run("File Operations", func(t *testing.T) {
 		// Test file existence
 		assert.True(t, utils.FileExists(testFile))
-		
+
 		// Test file size
 		size, err := utils.GetFileSize(testFile)
 		require.NoError(t, err)
 		assert.Greater(t, size, int64(0))
-		
+
 		// Test file copy
 		copiedFile := filepath.Join(tempDir, "copied.txt")
 		err = utils.CopyFile(testFile, copiedFile)
 		require.NoError(t, err)
 		defer os.Remove(copiedFile)
-		
+
 		assert.True(t, utils.FileExists(copiedFile))
-		
+
 		// Verify content
 		copiedContent, err := os.ReadFile(copiedFile)
 		require.NoError(t, err)
 		assert.Equal(t, testContent, string(copiedContent))
-		
+
 		// Test file extension
 		ext := utils.GetFileExtension(copiedFile)
 		assert.Equal(t, ".txt", ext)
-		
+
 		// Test filename sanitization
 		unsafeFile := "file/with\\special:chars.txt"
 		safeFile := utils.SanitizeFilename(unsafeFile)
@@ -387,15 +387,15 @@ func TestFileProcessing_Integration(t *testing.T) {
 
 func TestConcurrentProcessing_Integration(t *testing.T) {
 	t.Skip("Skipping concurrent processing test - requires TTS generation")
-	
+
 	// Test concurrent course generation
 	tempDir := filepath.Join(os.TempDir(), "concurrent_test")
 	outputDir := filepath.Join(os.TempDir(), "concurrent_output")
-	
+
 	err := utils.EnsureDir(tempDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
-	
+
 	err = utils.EnsureDir(outputDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(outputDir)
@@ -524,15 +524,15 @@ Content for course 3.`,
 
 func TestErrorHandling_Integration(t *testing.T) {
 	t.Skip("Skipping error handling test - requires TTS generation")
-	
+
 	// Test error handling throughout the pipeline
 	tempDir := filepath.Join(os.TempDir(), "error_test")
 	outputDir := filepath.Join(os.TempDir(), "error_output")
-	
+
 	err := utils.EnsureDir(tempDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
-	
+
 	err = utils.EnsureDir(outputDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(outputDir)
@@ -545,7 +545,7 @@ func TestErrorHandling_Integration(t *testing.T) {
 		}
 
 		course, err := generator.GenerateCourse("/nonexistent/path.md", outputDir, options)
-		
+
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "markdown file does not exist")
 		assert.Nil(t, course)
@@ -565,7 +565,7 @@ func TestErrorHandling_Integration(t *testing.T) {
 
 		// Try to use directory that doesn't exist and can't be created
 		course, err := generator.GenerateCourse(markdownPath, "/invalid/path/that/cannot/be/created", options)
-		
+
 		assert.Error(t, err)
 		assert.Nil(t, course)
 	})
@@ -580,7 +580,7 @@ func TestErrorHandling_Integration(t *testing.T) {
 		var options models.ProcessingOptions // Empty options
 
 		course, err := generator.GenerateCourse(markdownPath, outputDir, options)
-		
+
 		// Should work with empty options
 		if err == nil && course != nil {
 			assert.NotEmpty(t, course.ID)
@@ -591,15 +591,15 @@ func TestErrorHandling_Integration(t *testing.T) {
 
 func TestPerformance_Integration(t *testing.T) {
 	t.Skip("Skipping performance test - requires TTS generation")
-	
+
 	// Test performance characteristics
 	tempDir := filepath.Join(os.TempDir(), "perf_test")
 	outputDir := filepath.Join(os.TempDir(), "perf_output")
-	
+
 	err := utils.EnsureDir(tempDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
-	
+
 	err = utils.EnsureDir(outputDir)
 	require.NoError(t, err)
 	defer os.RemoveAll(outputDir)
@@ -609,12 +609,12 @@ func TestPerformance_Integration(t *testing.T) {
 		var contentBuilder strings.Builder
 		contentBuilder.WriteString("# Performance Test Course\n\n")
 		contentBuilder.WriteString("This is a performance test course.\n\n")
-		
+
 		// Add multiple sections
 		for i := 1; i <= 20; i++ {
 			contentBuilder.WriteString(fmt.Sprintf("## Section %d\n\n", i))
 			contentBuilder.WriteString(fmt.Sprintf("This is the content for section %d. ", i))
-			
+
 			// Add some content to each section
 			for j := 1; j <= 5; j++ {
 				contentBuilder.WriteString(fmt.Sprintf("Paragraph %d in section %d. ", j, i))
@@ -628,7 +628,7 @@ func TestPerformance_Integration(t *testing.T) {
 
 		// Measure processing time
 		start := time.Now()
-		
+
 		generator := pipeline.NewCourseGenerator()
 		options := models.ProcessingOptions{
 			Quality:   "standard",
@@ -636,18 +636,18 @@ func TestPerformance_Integration(t *testing.T) {
 		}
 
 		course, err := generator.GenerateCourse(markdownPath, outputDir, options)
-		
+
 		duration := time.Since(start)
-		
+
 		if err == nil && course != nil {
 			assert.NotEmpty(t, course.ID)
 			assert.Len(t, course.Lessons, 20) // 20 sections
-			
+
 			// Performance assertion - should process within reasonable time
 			// This may fail if dependencies are missing, which is ok
 			assert.Less(t, duration, 60*time.Second, "Processing should complete within 60 seconds")
-			
-			t.Logf("Processed 20 sections in %v (%.2f seconds per section)", 
+
+			t.Logf("Processed 20 sections in %v (%.2f seconds per section)",
 				duration, duration.Seconds()/20.0)
 		} else {
 			t.Logf("Performance test failed due to dependencies: %v", err)
@@ -658,11 +658,11 @@ func TestPerformance_Integration(t *testing.T) {
 		// Test memory efficiency with large course
 		var contentBuilder strings.Builder
 		contentBuilder.WriteString("# Memory Test Course\n\n")
-		
+
 		// Create a very large course
 		for i := 1; i <= 100; i++ {
 			contentBuilder.WriteString(fmt.Sprintf("## Large Section %d\n\n", i))
-			
+
 			// Add substantial content
 			for j := 1; j <= 50; j++ {
 				contentBuilder.WriteString(fmt.Sprintf("This is paragraph %d in large section %d. ", j, i))
@@ -685,7 +685,7 @@ func TestPerformance_Integration(t *testing.T) {
 		}
 
 		course, err := generator.GenerateCourse(markdownPath, outputDir, options)
-		
+
 		if err == nil && course != nil {
 			assert.Len(t, course.Lessons, 100) // 100 sections
 			t.Logf("Successfully processed large course with 100 sections")

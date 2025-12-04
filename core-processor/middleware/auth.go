@@ -14,9 +14,9 @@ import (
 
 // JWTClaims represents the JWT claims structure
 type JWTClaims struct {
-	UserID   string   `json:"user_id"`
-	Email    string   `json:"email"`
-	Role     string   `json:"role"`
+	UserID      string   `json:"user_id"`
+	Email       string   `json:"email"`
+	Role        string   `json:"role"`
 	Permissions []string `json:"permissions"`
 	jwt.RegisteredClaims
 }
@@ -34,8 +34,8 @@ type AuthMiddleware struct {
 func NewAuthMiddleware() *AuthMiddleware {
 	return &AuthMiddleware{
 		secretKey:     getSecretKey(),
-		tokenExpiry:   24 * time.Hour,      // Access token expires in 24 hours
-		refreshExpiry: 7 * 24 * time.Hour,  // Refresh token expires in 7 days
+		tokenExpiry:   24 * time.Hour,     // Access token expires in 24 hours
+		refreshExpiry: 7 * 24 * time.Hour, // Refresh token expires in 7 days
 		jwtIssuer:     "course-creator-api",
 		jwtAudience:   "course-creator-users",
 	}
@@ -45,9 +45,9 @@ func NewAuthMiddleware() *AuthMiddleware {
 func (am *AuthMiddleware) GenerateToken(user *models.User) (string, string, error) {
 	// Create claims
 	claims := JWTClaims{
-		UserID:    user.ID,
-		Email:     user.Email,
-		Role:      user.Role,
+		UserID:      user.ID,
+		Email:       user.Email,
+		Role:        user.Role,
 		Permissions: getUserPermissions(user.Role),
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    am.jwtIssuer,
@@ -137,8 +137,8 @@ func (am *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		claims, err := am.ValidateToken(token)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid token",
-				"code":  "INVALID_TOKEN",
+				"error":   "Invalid token",
+				"code":    "INVALID_TOKEN",
 				"details": err.Error(),
 			})
 			c.Abort()
@@ -236,9 +236,9 @@ func (am *AuthMiddleware) RefreshToken(refreshToken string) (string, error) {
 
 	// Create new claims with updated expiry
 	newClaims := JWTClaims{
-		UserID:    claims.UserID,
-		Email:     claims.Email,
-		Role:      claims.Role,
+		UserID:      claims.UserID,
+		Email:       claims.Email,
+		Role:        claims.Role,
 		Permissions: claims.Permissions,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    am.jwtIssuer,
@@ -271,9 +271,9 @@ func GetUserFromContext(c *gin.Context) (*models.User, error) {
 	permissions, _ := c.Get("user_permissions")
 
 	user := &models.User{
-		ID:          userID.(string),
-		Email:     email.(string),
-		Role:       role.(string),
+		ID:    userID.(string),
+		Email: email.(string),
+		Role:  role.(string),
 	}
 
 	// Store permissions in a custom field (not part of User model normally)
@@ -338,10 +338,10 @@ func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
 		limit:    limit,
 		window:   window,
 	}
-	
+
 	// Start cleanup goroutine
 	go rl.cleanup()
-	
+
 	return rl
 }
 
@@ -349,17 +349,17 @@ func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
 func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		clientIP := c.ClientIP()
-		
+
 		// Check current requests
 		now := time.Now()
 		requests, exists := rl.requests[clientIP]
-		
+
 		if !exists {
 			rl.requests[clientIP] = []time.Time{now}
 			c.Next()
 			return
 		}
-		
+
 		// Filter requests within the window
 		var validRequests []time.Time
 		for _, reqTime := range requests {
@@ -367,19 +367,19 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 				validRequests = append(validRequests, reqTime)
 			}
 		}
-		
+
 		// Check if limit exceeded
 		if len(validRequests) >= rl.limit {
 			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error": "Rate limit exceeded",
-				"code":  "RATE_LIMIT_EXCEEDED",
-				"limit": rl.limit,
+				"error":  "Rate limit exceeded",
+				"code":   "RATE_LIMIT_EXCEEDED",
+				"limit":  rl.limit,
 				"window": rl.window.String(),
 			})
 			c.Abort()
 			return
 		}
-		
+
 		// Add current request
 		rl.requests[clientIP] = append(validRequests, now)
 		c.Next()
@@ -390,7 +390,7 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 func (rl *RateLimiter) cleanup() {
 	ticker := time.NewTicker(rl.window)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		now := time.Now()
 		for clientIP, requests := range rl.requests {

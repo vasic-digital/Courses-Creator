@@ -13,37 +13,37 @@ import (
 	"strings"
 	"time"
 
-	"github.com/course-creator/core-processor/models"
 	storage "github.com/course-creator/core-processor/filestorage"
+	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/utils"
 )
 
 // BackgroundGenerator handles dynamic background generation
 type BackgroundGenerator struct {
-	config     BackgroundConfig
-	storage storage.StorageInterface
+	config        BackgroundConfig
+	storage       storage.StorageInterface
 	colorPalettes []ColorPalette
-	patterns   []PatternGenerator
+	patterns      []PatternGenerator
 }
 
 // BackgroundConfig holds background generation configuration
 type BackgroundConfig struct {
-	Width       int
-	Height      int
-	Quality     int
-	OutputDir   string
-	CacheDir    string
-	TempDir     string
-	Timeout     time.Duration
-	MaxRetries  int
+	Width      int
+	Height     int
+	Quality    int
+	OutputDir  string
+	CacheDir   string
+	TempDir    string
+	Timeout    time.Duration
+	MaxRetries int
 }
 
 // ColorPalette represents a color palette for backgrounds
 type ColorPalette struct {
-	Name     string
-	Colors   []color.RGBA
-	Weights  []float64
-	Mood     string
+	Name    string
+	Colors  []color.RGBA
+	Weights []float64
+	Mood    string
 }
 
 // PatternGenerator defines interface for background patterns
@@ -55,7 +55,7 @@ type PatternGenerator interface {
 // SolidPattern generates solid color backgrounds
 type SolidPattern struct{}
 
-// GradientPattern generates gradient backgrounds  
+// GradientPattern generates gradient backgrounds
 type GradientPattern struct{}
 
 // GeometricPattern generates geometric pattern backgrounds
@@ -119,57 +119,57 @@ func (bg *BackgroundGenerator) initializeColorPalettes() {
 		{
 			Name: "ocean",
 			Colors: []color.RGBA{
-				{R: 0, G: 119, B: 190, A: 255},    // Deep blue
-				{R: 0, G: 180, B: 216, A: 255},    // Sky blue
-				{R: 144, G: 224, B: 239, A: 255},  // Light blue
-				{R: 255, G: 255, B: 255, A: 255},  // White
+				{R: 0, G: 119, B: 190, A: 255},   // Deep blue
+				{R: 0, G: 180, B: 216, A: 255},   // Sky blue
+				{R: 144, G: 224, B: 239, A: 255}, // Light blue
+				{R: 255, G: 255, B: 255, A: 255}, // White
 			},
 			Weights: []float64{0.4, 0.3, 0.2, 0.1},
-			Mood:     "calm",
+			Mood:    "calm",
 		},
 		{
 			Name: "forest",
 			Colors: []color.RGBA{
-				{R: 34, G: 139, B: 34, A: 255},     // Forest green
-				{R: 107, G: 142, B: 35, A: 255},    // Olive green
-				{R: 144, G: 238, B: 144, A: 255},   // Light green
-				{R: 245, G: 245, B: 220, A: 255},  // Beige
+				{R: 34, G: 139, B: 34, A: 255},   // Forest green
+				{R: 107, G: 142, B: 35, A: 255},  // Olive green
+				{R: 144, G: 238, B: 144, A: 255}, // Light green
+				{R: 245, G: 245, B: 220, A: 255}, // Beige
 			},
 			Weights: []float64{0.3, 0.3, 0.25, 0.15},
-			Mood:     "natural",
+			Mood:    "natural",
 		},
 		{
 			Name: "sunset",
 			Colors: []color.RGBA{
-				{R: 255, G: 94, B: 77, A: 255},     // Coral
-				{R: 255, G: 154, B: 0, A: 255},    // Orange
-				{R: 237, G: 117, B: 57, A: 255},   // Dark orange
-				{R: 255, G: 206, B: 84, A: 255},   // Yellow
+				{R: 255, G: 94, B: 77, A: 255},  // Coral
+				{R: 255, G: 154, B: 0, A: 255},  // Orange
+				{R: 237, G: 117, B: 57, A: 255}, // Dark orange
+				{R: 255, G: 206, B: 84, A: 255}, // Yellow
 			},
 			Weights: []float64{0.3, 0.25, 0.25, 0.2},
-			Mood:     "energetic",
+			Mood:    "energetic",
 		},
 		{
 			Name: "lavender",
 			Colors: []color.RGBA{
-				{R: 230, G: 230, B: 250, A: 255},  // Lavender
-				{R: 216, G: 191, B: 216, A: 255},  // Thistle
-				{R: 221, G: 160, B: 221, A: 255},  // Plum
-				{R: 238, G: 130, B: 238, A: 255},  // Violet
+				{R: 230, G: 230, B: 250, A: 255}, // Lavender
+				{R: 216, G: 191, B: 216, A: 255}, // Thistle
+				{R: 221, G: 160, B: 221, A: 255}, // Plum
+				{R: 238, G: 130, B: 238, A: 255}, // Violet
 			},
 			Weights: []float64{0.3, 0.25, 0.25, 0.2},
-			Mood:     "elegant",
+			Mood:    "elegant",
 		},
 		{
 			Name: "professional",
 			Colors: []color.RGBA{
-				{R: 52, G: 73, B: 94, A: 255},      // Dark blue-gray
-				{R: 108, G: 117, B: 125, A: 255},   // Gray
-				{R: 189, G: 195, B: 199, A: 255},   // Light gray
-				{R: 236, G: 240, B: 241, A: 255},   // Very light gray
+				{R: 52, G: 73, B: 94, A: 255},    // Dark blue-gray
+				{R: 108, G: 117, B: 125, A: 255}, // Gray
+				{R: 189, G: 195, B: 199, A: 255}, // Light gray
+				{R: 236, G: 240, B: 241, A: 255}, // Very light gray
 			},
 			Weights: []float64{0.35, 0.25, 0.25, 0.15},
-			Mood:     "professional",
+			Mood:    "professional",
 		},
 	}
 }
@@ -197,7 +197,7 @@ func (bg *BackgroundGenerator) GenerateBackground(ctx context.Context, content s
 
 	// Generate background
 	backgroundPath := filepath.Join(bg.config.OutputDir, fmt.Sprintf("bg_%d_%s.png", seed, pattern.GetName()))
-	
+
 	img := image.NewRGBA(image.Rect(0, 0, bg.config.Width, bg.config.Height))
 
 	if err := pattern.Generate(img, palette, seed); err != nil {
@@ -217,9 +217,9 @@ func (bg *BackgroundGenerator) GenerateBackground(ctx context.Context, content s
 func (bg *BackgroundGenerator) selectPalette(content string, options models.ProcessingOptions) ColorPalette {
 	// Simple content analysis for palette selection
 	content = strings.ToLower(content)
-	
+
 	var selectedPalette ColorPalette
-	
+
 	// Check for mood indicators in content
 	if strings.Contains(content, "business") || strings.Contains(content, "professional") || strings.Contains(content, "corporate") {
 		selectedPalette = bg.colorPalettes[4] // Professional
@@ -240,7 +240,7 @@ func (bg *BackgroundGenerator) selectPalette(content string, options models.Proc
 			selectedPalette = bg.colorPalettes[4] // Professional for standard
 		}
 	}
-	
+
 	return selectedPalette
 }
 
@@ -280,14 +280,14 @@ func (bg *BackgroundGenerator) saveBackground(img *image.RGBA, path string) erro
 // SolidPattern implementation
 func (p *SolidPattern) Generate(img *image.RGBA, palette ColorPalette, seed int64) error {
 	bounds := img.Bounds()
-	
+
 	// Choose color from palette based on weights
 	rand.Seed(seed)
 	selectedColor := palette.WeightedRandomColor()
-	
+
 	// Fill entire image with selected color
 	draw.Draw(img, bounds, &image.Uniform{selectedColor}, image.Point{}, draw.Src)
-	
+
 	return nil
 }
 
@@ -299,27 +299,27 @@ func (p *SolidPattern) GetName() string {
 func (p *GradientPattern) Generate(img *image.RGBA, palette ColorPalette, seed int64) error {
 	bounds := img.Bounds()
 	rand.Seed(seed)
-	
+
 	// Choose two colors from palette
 	color1 := palette.RandomColor()
 	color2 := palette.RandomColor()
-	
+
 	// Create vertical gradient
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		ratio := float64(y-bounds.Min.Y) / float64(bounds.Max.Y-bounds.Min.Y)
-		
+
 		r := uint8(float64(color1.R)*(1-ratio) + float64(color2.R)*ratio)
 		g := uint8(float64(color1.G)*(1-ratio) + float64(color2.G)*ratio)
 		b := uint8(float64(color1.B)*(1-ratio) + float64(color2.B)*ratio)
 		a := uint8(float64(color1.A)*(1-ratio) + float64(color2.A)*ratio)
-		
+
 		c := color.RGBA{R: r, G: g, B: b, A: a}
-		
+
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			img.Set(x, y, c)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -331,21 +331,21 @@ func (p *GradientPattern) GetName() string {
 func (p *GeometricPattern) Generate(img *image.RGBA, palette ColorPalette, seed int64) error {
 	bounds := img.Bounds()
 	rand.Seed(seed)
-	
+
 	// Fill with base color
 	baseColor := palette.WeightedRandomColor()
 	draw.Draw(img, bounds, &image.Uniform{baseColor}, image.Point{}, draw.Src)
-	
+
 	// Add geometric shapes
 	numShapes := 5 + rand.Intn(10)
-	
+
 	for i := 0; i < numShapes; i++ {
 		shapeColor := palette.RandomColor()
-		
+
 		shapeType := rand.Intn(3)
 		x := rand.Intn(bounds.Max.X)
 		y := rand.Intn(bounds.Max.Y)
-		
+
 		switch shapeType {
 		case 0: // Circle
 			radius := 20 + rand.Intn(80)
@@ -359,7 +359,7 @@ func (p *GeometricPattern) Generate(img *image.RGBA, palette ColorPalette, seed 
 			p.drawTriangle(img, x, y, size, shapeColor)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -409,24 +409,24 @@ func (p *GeometricPattern) GetName() string {
 func (p *NoisePattern) Generate(img *image.RGBA, palette ColorPalette, seed int64) error {
 	bounds := img.Bounds()
 	rand.Seed(seed)
-	
+
 	baseColor := palette.WeightedRandomColor()
-	
+
 	// Add subtle noise texture
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			// Base color with slight variation
 			variation := rand.Intn(30) - 15 // -15 to +15
-			
+
 			r := uint8(clamp(int(baseColor.R)+variation, 0, 255))
 			g := uint8(clamp(int(baseColor.G)+variation, 0, 255))
 			b := uint8(clamp(int(baseColor.B)+variation, 0, 255))
 			a := baseColor.A
-			
+
 			img.Set(x, y, color.RGBA{R: r, G: g, B: b, A: a})
 		}
 	}
-	
+
 	return nil
 }
 
@@ -442,14 +442,14 @@ func (p ColorPalette) RandomColor() color.RGBA {
 func (p ColorPalette) WeightedRandomColor() color.RGBA {
 	r := rand.Float64()
 	cumsum := 0.0
-	
+
 	for i, weight := range p.Weights {
 		cumsum += weight
 		if r <= cumsum {
 			return p.Colors[i]
 		}
 	}
-	
+
 	return p.Colors[len(p.Colors)-1]
 }
 

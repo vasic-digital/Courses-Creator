@@ -18,31 +18,31 @@ import (
 type TTSProvider string
 
 const (
-	TTSProviderBark    TTSProvider = "bark"
+	TTSProviderBark     TTSProvider = "bark"
 	TTSProviderSpeechT5 TTSProvider = "speecht5"
-	TTSProviderAzure   TTSProvider = "azure"
-	TTSProviderGoogle  TTSProvider = "google"
+	TTSProviderAzure    TTSProvider = "azure"
+	TTSProviderGoogle   TTSProvider = "google"
 )
 
 // TTSConfig holds TTS configuration
 type TTSConfig struct {
-	DefaultProvider    TTSProvider
-	OutputDir         string
-	SampleRate        int
-	BitRate           int
-	Format            string // "wav", "mp3", "ogg"
-	Timeout           time.Duration
-	MaxRetries        int
-	ChunkSize         int // Maximum text length per chunk
-	Parallelism       int // Number of parallel TTS generations
+	DefaultProvider TTSProvider
+	OutputDir       string
+	SampleRate      int
+	BitRate         int
+	Format          string // "wav", "mp3", "ogg"
+	Timeout         time.Duration
+	MaxRetries      int
+	ChunkSize       int // Maximum text length per chunk
+	Parallelism     int // Number of parallel TTS generations
 }
 
 // TTSProcessor handles text-to-speech generation
 type TTSProcessor struct {
-	Config        TTSConfig
-	BarkServer    *mcp_servers.BarkTTSServer
-	mu            sync.RWMutex
-	Running       bool
+	Config     TTSConfig
+	BarkServer *mcp_servers.BarkTTSServer
+	mu         sync.RWMutex
+	Running    bool
 }
 
 // AudioSegment represents a processed audio segment
@@ -58,23 +58,23 @@ type AudioSegment struct {
 func NewTTSProcessor() *TTSProcessor {
 	config := TTSConfig{
 		DefaultProvider: TTSProviderBark,
-		OutputDir:      "/tmp/course_audio",
-		SampleRate:     24000,
-		BitRate:        128000,
-		Format:         "wav",
-		Timeout:        60 * time.Second,
-		MaxRetries:     3,
-		ChunkSize:      200,
-		Parallelism:    2,
+		OutputDir:       "/tmp/course_audio",
+		SampleRate:      24000,
+		BitRate:         128000,
+		Format:          "wav",
+		Timeout:         60 * time.Second,
+		MaxRetries:      3,
+		ChunkSize:       200,
+		Parallelism:     2,
 	}
 
 	// Ensure output directory exists
 	utils.EnsureDir(config.OutputDir)
 
 	return &TTSProcessor{
-		Config:         config,
-		BarkServer:     mcp_servers.NewBarkTTSServer(),
-		Running:        true,
+		Config:     config,
+		BarkServer: mcp_servers.NewBarkTTSServer(),
+		Running:    true,
 	}
 }
 
@@ -84,9 +84,9 @@ func NewTTSProcessorWithConfig(config TTSConfig) *TTSProcessor {
 	utils.EnsureDir(config.OutputDir)
 
 	return &TTSProcessor{
-		Config:         config,
-		BarkServer:     mcp_servers.NewBarkTTSServer(),
-		Running:        true,
+		Config:     config,
+		BarkServer: mcp_servers.NewBarkTTSServer(),
+		Running:    true,
 	}
 }
 
@@ -112,7 +112,7 @@ func (tp *TTSProcessor) GenerateAudio(text string, options models.ProcessingOpti
 			provider = TTSProviderSpeechT5
 		case "bark":
 			provider = TTSProviderBark
-		// Add other providers as needed
+			// Add other providers as needed
 		}
 	}
 
@@ -493,7 +493,7 @@ func (tp *TTSProcessor) combineAudioSegments(segments []AudioSegment, originalTe
 
 	// Combine audio using FFmpeg
 	outputPath := filepath.Join(tp.Config.OutputDir, fmt.Sprintf("combined_%d.%s", utils.HashString(originalText), tp.Config.Format))
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), tp.Config.Timeout)
 	defer cancel()
 
