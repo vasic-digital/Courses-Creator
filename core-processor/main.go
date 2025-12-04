@@ -51,7 +51,8 @@ func startServer() {
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		log.Printf("Failed to load configuration: %v", err)
+		os.Exit(1)
 	}
 
 	// Initialize database
@@ -60,7 +61,8 @@ func startServer() {
 
 	db, err := database.NewDatabase(dbConfig)
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		log.Printf("Failed to initialize database: %v", err)
+		os.Exit(1)
 	}
 	defer db.Close()
 
@@ -98,7 +100,8 @@ func startServer() {
 	// Initialize storage manager
 	storageManager, err := filestorage.NewStorageManagerWithDefault(filestorage.DefaultStorageConfig())
 	if err != nil {
-		log.Fatalf("Failed to initialize storage: %v", err)
+		log.Printf("Failed to initialize storage: %v", err)
+		os.Exit(1)
 	}
 
 	jobCtx := &jobs.JobContext{
@@ -111,7 +114,8 @@ func startServer() {
 
 	// Start job queue
 	if err := jobQueue.Start(); err != nil {
-		log.Fatalf("Failed to start job queue: %v", err)
+		log.Printf("Failed to start job queue: %v", err)
+		os.Exit(1)
 	}
 	defer jobQueue.Stop()
 
@@ -200,7 +204,11 @@ func startServer() {
 	log.Printf("Storage: %s (type: %s)", defaultStorage.BasePath, defaultStorage.Type)
 	log.Printf("Job queue: started with %d workers", 4)
 	log.Printf("Authentication: enabled")
-	log.Fatal(r.Run(":" + port))
+
+	if err := r.Run(":" + port); err != nil {
+		log.Printf("Failed to start server: %v", err)
+		os.Exit(1)
+	}
 }
 
 func generateCourse(markdownFile, outputDir string) {
@@ -214,7 +222,8 @@ func generateCourse(markdownFile, outputDir string) {
 
 	course, err := generator.GenerateCourse(markdownFile, outputDir, options)
 	if err != nil {
-		log.Fatalf("Failed to generate course: %v", err)
+		log.Printf("Failed to generate course: %v", err)
+		os.Exit(1)
 	}
 
 	fmt.Printf("Course generated successfully: %s\n", course.Title)

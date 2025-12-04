@@ -27,14 +27,15 @@ func StartServer() {
 	dbConfig := database.DefaultConfig()
 	db, err := database.NewDatabase(dbConfig)
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		log.Printf("Failed to initialize database: %v", err)
+		return
 	}
 	defer db.Close()
 
 	// Add middleware
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	
+
 	// Add security headers middleware
 	r.Use(func(c *gin.Context) {
 		c.Header("X-Content-Type-Options", "nosniff")
@@ -112,7 +113,9 @@ func StartServer() {
 		log.Printf("  %s %s", route.Method, route.Path)
 	}
 
-	log.Fatal(r.Run(":" + port))
+	if err := r.Run(":" + port); err != nil {
+		log.Printf("Failed to start server: %v", err)
+	}
 }
 
 // GenerateCourse generates a course from markdown file via CLI
@@ -127,7 +130,8 @@ func GenerateCourse(markdownFile, outputDir string) {
 
 	course, err := generator.GenerateCourse(markdownFile, outputDir, options)
 	if err != nil {
-		log.Fatalf("Failed to generate course: %v", err)
+		log.Printf("Failed to generate course: %v", err)
+		return
 	}
 
 	fmt.Printf("Course generated successfully: %s\n", course.Title)

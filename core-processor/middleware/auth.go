@@ -319,7 +319,7 @@ func getUserPermissions(role string) []string {
 func getSecretKey() string {
 	secret := os.Getenv("JWT_SECRET_KEY")
 	if secret == "" {
-		secret = "course-creator-default-secret-key-change-in-production"
+		secret = "change-this-default-secret-key-in-production"
 	}
 	return secret
 }

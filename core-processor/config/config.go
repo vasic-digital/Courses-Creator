@@ -107,7 +107,7 @@ type TTSConfig struct {
 
 // SecurityConfig holds security-related configuration
 type SecurityConfig struct {
-	JWTSecret       string        `env:"JWT_SECRET" default:"your-secret-key"`
+	JWTSecret       string        `env:"JWT_SECRET" default:"change-me-in-production"`
 	JWTExpiration   time.Duration `env:"JWT_EXPIRATION" default:"24h"`
 	EnableAuth      bool          `env:"ENABLE_AUTH" default:"false"`
 	EnableRateLimit bool          `env:"ENABLE_RATE_LIMIT" default:"true"`
@@ -172,7 +172,7 @@ func LoadConfig() (*Config, error) {
 			Timeout:     getDurationEnv("TTS_TIMEOUT", 60*time.Second),
 		},
 		Security: SecurityConfig{
-			JWTSecret:       getEnv("JWT_SECRET", "your-secret-key"),
+			JWTSecret:       getEnv("JWT_SECRET", "change-me-in-production"),
 			JWTExpiration:   getDurationEnv("JWT_EXPIRATION", 24*time.Hour),
 			EnableAuth:      getBoolEnv("ENABLE_AUTH", false),
 			EnableRateLimit: getBoolEnv("ENABLE_RATE_LIMIT", true),
