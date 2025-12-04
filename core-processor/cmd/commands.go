@@ -7,13 +7,10 @@ import (
 
 	"github.com/course-creator/core-processor/api"
 	"github.com/course-creator/core-processor/database"
-	"github.com/course-creator/core-processor/jobs"
 	"github.com/course-creator/core-processor/middleware"
 	"github.com/course-creator/core-processor/models"
 	"github.com/course-creator/core-processor/pipeline"
 	"github.com/course-creator/core-processor/services"
-	"github.com/course-creator/core-processor/utils"
-	filestorage "github.com/course-creator/core-processor/filestorage"
 	"github.com/gin-gonic/gin"
 )
 
@@ -39,15 +36,15 @@ func StartServer() {
 
 	// Initialize authentication
 	authMiddleware := middleware.NewAuthMiddleware()
-	
+
 	// Initialize services
 	authService := services.NewAuthService(db.GetGormDB(), authMiddleware)
-	
+
 	// Create handlers
 	courseHandler := api.NewCourseHandler(db)
 	authHandler := api.NewAuthHandler(authService, authMiddleware)
 	courseAPIService := api.NewCourseAPIService(courseHandler)
-	
+
 	// Rate limiting middleware
 	rateLimiter := middleware.NewRateLimiter(100, time.Minute) // 100 requests per minute
 
@@ -56,7 +53,7 @@ func StartServer() {
 	v1.Use(rateLimiter.Middleware())
 	{
 		v1.GET("/health", courseHandler.HealthCheck)
-		
+
 		// Authentication routes
 		authGroup := v1.Group("/auth")
 		{
@@ -64,14 +61,14 @@ func StartServer() {
 			authGroup.POST("/login", authHandler.Login)
 			authGroup.POST("/refresh", authHandler.RefreshToken)
 		}
-		
+
 		// Debug route to see all registered routes
 		v1.GET("/debug/routes", func(c *gin.Context) {
 			routes := c.FullPath()
 			c.JSON(200, gin.H{
 				"message": "Routes debug",
-				"path": routes,
-				"query": c.Request.URL.RawQuery,
+				"path":    routes,
+				"query":   c.Request.URL.RawQuery,
 			})
 		})
 	}
@@ -89,7 +86,7 @@ func StartServer() {
 		protected.POST("/courses/generate", courseHandler.GenerateCourse)
 		protected.GET("/courses/original", courseHandler.ListCourses)
 		protected.GET("/courses/original/:id", courseHandler.GetCourse)
-		
+
 		// Job endpoints
 		protected.GET("/jobs", courseHandler.ListJobs)
 		protected.GET("/jobs/:id", courseHandler.GetJob)
@@ -98,13 +95,13 @@ func StartServer() {
 	// Start server
 	port := "8080"
 	log.Printf("Starting Course Creator API server on port %s", port)
-	
+
 	// Print all registered routes for debugging
 	log.Printf("Registered routes:")
 	for _, route := range r.Routes() {
 		log.Printf("  %s %s", route.Method, route.Path)
 	}
-	
+
 	log.Fatal(r.Run(":" + port))
 }
 

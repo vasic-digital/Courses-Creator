@@ -15,8 +15,8 @@ import (
 
 func TestBaseServerImpl_NewBaseServer(t *testing.T) {
 	config := mcp_servers.MCPServerConfig{
-		Name:      "test-server",
-		Version:   "1.0.0",
+		Name:       "test-server",
+		Version:    "1.0.0",
 		Transport:  "stdio",
 		Timeout:    10 * time.Second,
 		MaxRetries: 3,
@@ -34,8 +34,8 @@ func TestBaseServerImpl_NewBaseServer(t *testing.T) {
 
 func TestBaseServerImpl_AddTool(t *testing.T) {
 	config := mcp_servers.MCPServerConfig{
-		Name:      "test-server",
-		Version:   "1.0.0",
+		Name:       "test-server",
+		Version:    "1.0.0",
 		Transport:  "stdio",
 		Timeout:    10 * time.Second,
 		MaxRetries: 3,
@@ -47,7 +47,7 @@ func TestBaseServerImpl_AddTool(t *testing.T) {
 	testHandler := func(args map[string]interface{}) (interface{}, error) {
 		return "test result", nil
 	}
-	
+
 	server.AddTool("test_tool", "A test tool", testHandler)
 
 	// Check that tool was added
@@ -60,8 +60,8 @@ func TestBaseServerImpl_AddTool(t *testing.T) {
 
 func TestBaseServerImpl_ProcessRequest(t *testing.T) {
 	config := mcp_servers.MCPServerConfig{
-		Name:      "test-server",
-		Version:   "1.0.0",
+		Name:       "test-server",
+		Version:    "1.0.0",
 		Transport:  "stdio",
 		Timeout:    10 * time.Second,
 		MaxRetries: 3,
@@ -101,8 +101,8 @@ func TestBaseServerImpl_ProcessRequest(t *testing.T) {
 
 func TestBaseServerImpl_Stop(t *testing.T) {
 	config := mcp_servers.MCPServerConfig{
-		Name:      "test-server",
-		Version:   "1.0.0",
+		Name:       "test-server",
+		Version:    "1.0.0",
 		Transport:  "stdio",
 		Timeout:    10 * time.Second,
 		MaxRetries: 3,
@@ -131,9 +131,17 @@ func TestBarkTTSServer_NewBarkTTSServer(t *testing.T) {
 }
 
 func TestBarkTTSServer_GenerateTTS(t *testing.T) {
-	t.Skip("Skipping Bark TTS test - requires large model downloads (5GB+)")
-	
-	server := mcp_servers.NewBarkTTSServer()
+	// Skip if OpenAI API key is not available
+	if os.Getenv("OPENAI_API_KEY") == "" {
+		t.Skip("Skipping Bark TTS test - OPENAI_API_KEY environment variable not set")
+	}
+
+	// Create temporary directory for test output
+	tempDir, err := os.MkdirTemp("", "bark_test_*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	server := mcp_servers.NewBarkTTSServerWithConfig("http://localhost:8081", "/models/bark", tempDir, 200, 24000)
 
 	// Test with valid text
 	args := map[string]interface{}{
@@ -146,21 +154,27 @@ func TestBarkTTSServer_GenerateTTS(t *testing.T) {
 	// Result should contain audio path
 	require.NoError(t, err)
 	assert.NotNil(t, result)
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	require.True(t, ok)
-	
+
 	assert.Contains(t, resultMap, "audio_path")
 	assert.Contains(t, resultMap, "text")
 	assert.Contains(t, resultMap, "voice")
 	assert.Equal(t, "Hello, world!", resultMap["text"])
 	assert.Equal(t, "v2/en_speaker_6", resultMap["voice"])
 
-	// Clean up generated file
+	// Verify audio file was created
 	audioPath, ok := resultMap["audio_path"].(string)
-	if ok && audioPath != "" {
-		os.Remove(audioPath)
-	}
+	require.True(t, ok)
+	assert.NotEmpty(t, audioPath)
+
+	// Check that file exists
+	_, err = os.Stat(audioPath)
+	assert.NoError(t, err)
+
+	// Clean up generated file
+	os.Remove(audioPath)
 }
 
 func TestBarkTTSServer_ListVoices(t *testing.T) {
@@ -171,17 +185,17 @@ func TestBarkTTSServer_ListVoices(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotNil(t, result)
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	require.True(t, ok)
-	
+
 	assert.Contains(t, resultMap, "voices")
 	assert.Contains(t, resultMap, "total")
-	
+
 	voices, ok := resultMap["voices"].([]map[string]interface{})
 	require.True(t, ok)
 	assert.Greater(t, len(voices), 0)
-	
+
 	total, ok := resultMap["total"].(int)
 	require.True(t, ok)
 	assert.Equal(t, len(voices), total)
@@ -212,10 +226,38 @@ func TestSpeechT5TTSServer_NewSpeechT5Server(t *testing.T) {
 	assert.NotNil(t, server.Tools)
 }
 
+func TestLLaVAServer_NewLLaVAServer(t *testing.T) {
+	server := mcp_servers.NewLLaVAServer()
+
+	require.NotNil(t, server)
+	assert.Equal(t, "llava-image", server.Config.Name)
+	assert.Equal(t, "1.0.0", server.Config.Version)
+	assert.Equal(t, "stdio", server.Config.Transport)
+	assert.NotNil(t, server.Tools)
+}
+
+func TestPix2StructServer_NewPix2StructServer(t *testing.T) {
+	server := mcp_servers.NewPix2StructServer()
+
+	require.NotNil(t, server)
+	assert.Equal(t, "pix2struct-ui", server.Config.Name)
+	assert.Equal(t, "1.0.0", server.Config.Version)
+	assert.Equal(t, "stdio", server.Config.Transport)
+	assert.NotNil(t, server.Tools)
+}
+
 func TestSpeechT5TTSServer_GenerateTTS(t *testing.T) {
-	t.Skip("Skipping SpeechT5 TTS test - requires large model downloads")
-	
-	server := mcp_servers.NewSpeechT5Server()
+	// Skip if ElevenLabs API key is not available
+	if os.Getenv("ELEVENLABS_API_KEY") == "" {
+		t.Skip("Skipping SpeechT5 TTS test - ELEVENLABS_API_KEY environment variable not set")
+	}
+
+	// Create temporary directory for test output
+	tempDir, err := os.MkdirTemp("", "speecht5_test_*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	server := mcp_servers.NewSpeechT5ServerWithConfig("http://localhost:8082", "/models/speecht5", tempDir, 300, 16000)
 
 	// Test with valid text
 	args := map[string]interface{}{
@@ -228,10 +270,10 @@ func TestSpeechT5TTSServer_GenerateTTS(t *testing.T) {
 	// Result should contain audio path
 	require.NoError(t, err)
 	assert.NotNil(t, result)
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	require.True(t, ok)
-	
+
 	assert.Contains(t, resultMap, "audio_path")
 	assert.Contains(t, resultMap, "text")
 	assert.Contains(t, resultMap, "voice")
@@ -243,6 +285,146 @@ func TestSpeechT5TTSServer_GenerateTTS(t *testing.T) {
 	if ok && audioPath != "" {
 		os.Remove(audioPath)
 	}
+}
+
+func TestLLaVAServer_AnalyzeImage(t *testing.T) {
+	// Skip if OpenAI API key is not available
+	if os.Getenv("OPENAI_API_KEY") == "" {
+		t.Skip("Skipping LLaVA test - OPENAI_API_KEY environment variable not set")
+	}
+
+	server := mcp_servers.NewLLaVAServer()
+
+	// Test with a simple test image path (this would normally be a real image)
+	args := map[string]interface{}{
+		"image":  "/tmp/test_image.jpg",
+		"prompt": "Describe what you see in this image",
+	}
+
+	result, err := server.AnalyzeImage(args)
+
+	// Should return an error for non-existent image in test
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestLLaVAServer_ExtractText(t *testing.T) {
+	// Skip if OpenAI API key is not available
+	if os.Getenv("OPENAI_API_KEY") == "" {
+		t.Skip("Skipping LLaVA test - OPENAI_API_KEY environment variable not set")
+	}
+
+	server := mcp_servers.NewLLaVAServer()
+
+	// Test with a simple test image path
+	args := map[string]interface{}{
+		"image": "/tmp/test_image.jpg",
+	}
+
+	// Call the internal method via reflection or test the error path
+	// Since extractText is not exported, we test via the tool handler
+	tool := server.Tools["extract_text"]
+	require.NotNil(t, tool)
+
+	result, err := tool.Handler(args)
+
+	// Should return an error for non-existent image in test
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestLLaVAServer_DetectObjects(t *testing.T) {
+	// Skip if OpenAI API key is not available
+	if os.Getenv("OPENAI_API_KEY") == "" {
+		t.Skip("Skipping LLaVA test - OPENAI_API_KEY environment variable not set")
+	}
+
+	server := mcp_servers.NewLLaVAServer()
+
+	// Test with a simple test image path
+	args := map[string]interface{}{
+		"image":      "/tmp/test_image.jpg",
+		"confidence": 0.5,
+	}
+
+	// Call the internal method via the tool handler
+	tool := server.Tools["detect_objects"]
+	require.NotNil(t, tool)
+
+	result, err := tool.Handler(args)
+
+	// Should return an error for non-existent image in test
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestPix2StructServer_ParseUI(t *testing.T) {
+	// Skip if OpenAI API key is not available
+	if os.Getenv("OPENAI_API_KEY") == "" {
+		t.Skip("Skipping Pix2Struct test - OPENAI_API_KEY environment variable not set")
+	}
+
+	server := mcp_servers.NewPix2StructServer()
+
+	// Test with a simple test image path
+	args := map[string]interface{}{
+		"image":  "/tmp/test_ui_screenshot.png",
+		"prompt": "Describe the UI elements in this screenshot",
+	}
+
+	result, err := server.ParseUI(args)
+
+	// Should return an error for non-existent image in test
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestPix2StructServer_ExtractButtons(t *testing.T) {
+	// Skip if OpenAI API key is not available
+	if os.Getenv("OPENAI_API_KEY") == "" {
+		t.Skip("Skipping Pix2Struct test - OPENAI_API_KEY environment variable not set")
+	}
+
+	server := mcp_servers.NewPix2StructServer()
+
+	// Test with a simple test image path
+	args := map[string]interface{}{
+		"image": "/tmp/test_ui_screenshot.png",
+	}
+
+	// Call the internal method via the tool handler
+	tool := server.Tools["extract_buttons"]
+	require.NotNil(t, tool)
+
+	result, err := tool.Handler(args)
+
+	// Should return an error for non-existent image in test
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestPix2StructServer_ExtractForms(t *testing.T) {
+	// Skip if OpenAI API key is not available
+	if os.Getenv("OPENAI_API_KEY") == "" {
+		t.Skip("Skipping Pix2Struct test - OPENAI_API_KEY environment variable not set")
+	}
+
+	server := mcp_servers.NewPix2StructServer()
+
+	// Test with a simple test image path
+	args := map[string]interface{}{
+		"image": "/tmp/test_ui_screenshot.png",
+	}
+
+	// Call the internal method via the tool handler
+	tool := server.Tools["extract_forms"]
+	require.NotNil(t, tool)
+
+	result, err := tool.Handler(args)
+
+	// Should return an error for non-existent image in test
+	assert.Error(t, err)
+	assert.Nil(t, result)
 }
 
 func TestUtils_HashString(t *testing.T) {
@@ -295,7 +477,7 @@ func TestUtils_FileExists(t *testing.T) {
 	err := os.MkdirAll(tempDir, 0755)
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
-	
+
 	tempFile := filepath.Join(tempDir, "test.txt")
 	err = os.WriteFile(tempFile, []byte("test content"), 0644)
 	require.NoError(t, err)
@@ -317,10 +499,10 @@ func TestUtils_CopyFile(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(srcDir)
 	defer os.RemoveAll(dstDir)
-	
+
 	srcFile := filepath.Join(srcDir, "test.txt")
 	dstFile := filepath.Join(dstDir, "test.txt")
-	
+
 	// Create source file
 	content := []byte("test content for copy")
 	err = os.WriteFile(srcFile, content, 0644)
@@ -401,10 +583,10 @@ func TestUtils_GetFileSize(t *testing.T) {
 	err := os.MkdirAll(tempDir, 0755)
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
-	
+
 	tempFile := filepath.Join(tempDir, "test.txt")
 	content := []byte("test content for size")
-	
+
 	err = os.WriteFile(tempFile, content, 0644)
 	require.NoError(t, err)
 
@@ -439,15 +621,15 @@ func TestUtils_Retry(t *testing.T) {
 
 func TestExecuteCommand(t *testing.T) {
 	ctx := context.Background()
-	
+
 	// Test valid command
 	cmd := utils.ExecuteCommand(ctx, "echo", "test")
 	require.NotNil(t, cmd)
-	
+
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err)
 	assert.Equal(t, "test\n", string(output))
-	
+
 	// Test invalid command
 	cmd = utils.ExecuteCommand(ctx, "nonexistent_command")
 	output, err = cmd.CombinedOutput()
@@ -456,12 +638,12 @@ func TestExecuteCommand(t *testing.T) {
 
 func TestExecuteCommandWithOutput(t *testing.T) {
 	ctx := context.Background()
-	
+
 	// Test valid command
 	output, err := utils.ExecuteCommandWithOutput(ctx, "echo", "test")
 	require.NoError(t, err)
 	assert.Equal(t, "test\n", output)
-	
+
 	// Test invalid command
 	_, err = utils.ExecuteCommandWithOutput(ctx, "nonexistent_command")
 	assert.Error(t, err)

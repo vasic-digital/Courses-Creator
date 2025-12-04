@@ -1,21 +1,21 @@
-package main
+package providers_test
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
+	"testing"
 
 	"github.com/course-creator/core-processor/config"
 	"github.com/course-creator/core-processor/llm"
 	"github.com/course-creator/core-processor/models"
 )
 
-func main() {
+func TestLLMMock(t *testing.T) {
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		t.Fatalf("Failed to load config: %v", err)
 	}
 
 	// Create LLM manager
@@ -69,7 +69,7 @@ func main() {
 	contentGen = llm.NewCourseContentGenerator(mockCfg)
 	
 	// Register mock provider manually
-	mockProvider := &MockProvider{
+	_ = &MockProvider{
 		BaseProvider: llm.NewBaseProvider("Mock", llm.ProviderTypeFree),
 	}
 	// We need access to the internal provider manager - let's create our own for testing

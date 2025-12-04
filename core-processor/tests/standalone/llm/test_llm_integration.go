@@ -1,20 +1,20 @@
-package main
+package llm_test
 
 import (
 	"context"
 	"fmt"
-	"log"
+	"testing"
 
 	"github.com/course-creator/core-processor/config"
 	"github.com/course-creator/core-processor/llm"
 	"github.com/course-creator/core-processor/models"
 )
 
-func main() {
+func TestLLMIntegration(t *testing.T) {
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		t.Fatalf("Failed to load config: %v", err)
 	}
 
 	// Create LLM manager

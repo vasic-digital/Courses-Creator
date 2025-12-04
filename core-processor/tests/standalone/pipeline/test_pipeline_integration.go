@@ -1,11 +1,11 @@
-package main
+package pipeline_test
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
+	"testing"
 	"time"
 
 	"github.com/course-creator/core-processor/config"
@@ -15,14 +15,14 @@ import (
 	"github.com/course-creator/core-processor/utils"
 )
 
-func main() {
+func TestPipelineIntegration(t *testing.T) {
 	fmt.Println("Testing complete pipeline integration with LLM providers...")
 
 	// Create test markdown
 	tempDir := "/tmp/pipeline_test"
 	err := utils.EnsureDir(tempDir)
 	if err != nil {
-		log.Fatalf("Failed to create temp dir: %v", err)
+		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
 
@@ -41,13 +41,13 @@ Machine Learning is a subset of AI that enables systems to learn from data.`
 	markdownPath := filepath.Join(tempDir, "test_course.md")
 	err = utils.WriteFile(markdownPath, markdownContent)
 	if err != nil {
-		log.Fatalf("Failed to write markdown: %v", err)
+		t.Fatalf("Failed to write markdown: %v", err)
 	}
 
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Printf("Failed to load config, using defaults: %v", err)
+		t.Logf("Failed to load config, using defaults: %v", err)
 		cfg = &config.Config{
 			Storage: map[string]config.StorageConfig{
 				"default": config.StorageConfig{

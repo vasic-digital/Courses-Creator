@@ -2,7 +2,6 @@ package unit
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -17,7 +16,7 @@ func setupJobTestQueue(t *testing.T) *jobs.JobQueue {
 	// but keeping for reference
 	db := setupTestDB(t)
 	queue := jobs.NewJobQueue(db, 2)
-	
+
 	// Register dummy handlers for all job types to prevent hanging
 	queue.RegisterHandler(jobs.JobTypeCourseGeneration, func(ctx context.Context, job *jobs.Job) error {
 		return nil
@@ -31,7 +30,7 @@ func setupJobTestQueue(t *testing.T) *jobs.JobQueue {
 	queue.RegisterHandler(jobs.JobTypeSubtitleGeneration, func(ctx context.Context, job *jobs.Job) error {
 		return nil
 	})
-	
+
 	// Create test users to satisfy foreign key constraints
 	testUser1 := &models.UserDB{
 		ID:    "test-user-id",
@@ -40,7 +39,7 @@ func setupJobTestQueue(t *testing.T) *jobs.JobQueue {
 	}
 	testUser2 := &models.UserDB{
 		ID:    "user-1",
-		Email: "user1@example.com", 
+		Email: "user1@example.com",
 		Role:  "creator",
 	}
 	testUser3 := &models.UserDB{
@@ -48,11 +47,11 @@ func setupJobTestQueue(t *testing.T) *jobs.JobQueue {
 		Email: "user2@example.com",
 		Role:  "creator",
 	}
-	
+
 	require.NoError(t, db.Create(testUser1).Error)
 	require.NoError(t, db.Create(testUser2).Error)
 	require.NoError(t, db.Create(testUser3).Error)
-	
+
 	return queue
 }
 
@@ -77,21 +76,21 @@ func TestJobQueue(t *testing.T) {
 		// Create fresh queue to isolate test
 		db := setupTestDB(t)
 		queue := jobs.NewJobQueue(db, 2)
-		
+
 		// Start queue
 		err := queue.Start()
 		require.NoError(t, err)
-		
+
 		// Stop queue
 		queue.Stop()
 	})
-	
+
 	t.Run("Enqueue Job", func(t *testing.T) {
 		// Create fresh queue to isolate test
 		db := setupTestDB(t)
 		queue := jobs.NewJobQueue(db, 2)
 		// Don't start the queue - just test enqueueing
-		
+
 		// Create user
 		testUser := &models.UserDB{
 			ID:    "test-user-id",
@@ -99,15 +98,15 @@ func TestJobQueue(t *testing.T) {
 			Role:  "creator",
 		}
 		require.NoError(t, db.Create(testUser).Error)
-		
+
 		// Use a timeout context to avoid hanging
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		
+
 		payload := map[string]interface{}{
 			"test_key": "test_value",
 		}
-		
+
 		job, err := queue.Enqueue(ctx, jobs.JobTypeCourseGeneration, "test-user-id", payload, jobs.JobPriorityNormal)
 		require.NoError(t, err)
 		assert.NotNil(t, job)
@@ -124,13 +123,13 @@ func TestJobQueue(t *testing.T) {
 		assert.Nil(t, job.CompletedAt)
 		assert.Nil(t, job.Error)
 	})
-	
+
 	t.Run("Get Job", func(t *testing.T) {
 		// Create fresh queue to isolate test
 		db := setupTestDB(t)
 		queue := jobs.NewJobQueue(db, 2)
 		// Don't start the queue - just test basic operations
-		
+
 		// Create user
 		testUser := &models.UserDB{
 			ID:    "test-user-id",
@@ -138,15 +137,15 @@ func TestJobQueue(t *testing.T) {
 			Role:  "creator",
 		}
 		require.NoError(t, db.Create(testUser).Error)
-		
+
 		payload := map[string]interface{}{
 			"test_key": "test_value",
 		}
-		
+
 		// Create job
 		createdJob, err := queue.Enqueue(context.Background(), jobs.JobTypeVideoProcessing, "test-user-id", payload, jobs.JobPriorityHigh)
 		require.NoError(t, err)
-		
+
 		// Get job
 		retrievedJob, err := queue.GetJob(context.Background(), createdJob.ID)
 		require.NoError(t, err)
@@ -155,13 +154,13 @@ func TestJobQueue(t *testing.T) {
 		assert.Equal(t, createdJob.UserID, retrievedJob.UserID)
 		assert.Equal(t, createdJob.Payload, retrievedJob.Payload)
 	})
-	
+
 	t.Run("Get User Jobs", func(t *testing.T) {
 		// Create fresh queue to isolate test
 		db := setupTestDB(t)
 		queue := jobs.NewJobQueue(db, 2)
 		// Don't start the queue - just test basic operations
-		
+
 		// Create users
 		user1 := &models.UserDB{
 			ID:    "user-1",
@@ -175,17 +174,17 @@ func TestJobQueue(t *testing.T) {
 		}
 		require.NoError(t, db.Create(user1).Error)
 		require.NoError(t, db.Create(user2).Error)
-		
+
 		// Create jobs for different users
 		job1, _ := queue.Enqueue(context.Background(), jobs.JobTypeAudioGeneration, "user-1", map[string]interface{}{}, jobs.JobPriorityNormal)
 		job2, _ := queue.Enqueue(context.Background(), jobs.JobTypeSubtitleGeneration, "user-1", map[string]interface{}{}, jobs.JobPriorityNormal)
 		job3, _ := queue.Enqueue(context.Background(), jobs.JobTypeCourseGeneration, "user-2", map[string]interface{}{}, jobs.JobPriorityNormal)
-		
+
 		// Get jobs for user-1
 		user1Jobs, err := queue.GetUserJobs(context.Background(), "user-1", 10, 0)
 		require.NoError(t, err)
 		assert.Len(t, user1Jobs, 2)
-		
+
 		// Verify job IDs
 		jobIDs := make(map[string]bool)
 		for _, job := range user1Jobs {
@@ -195,12 +194,12 @@ func TestJobQueue(t *testing.T) {
 		assert.True(t, jobIDs[job2.ID])
 		assert.False(t, jobIDs[job3.ID])
 	})
-	
+
 	t.Run("Cancel Job", func(t *testing.T) {
 		// Create fresh queue to isolate test
 		db := setupTestDB(t)
 		queue := jobs.NewJobQueue(db, 2)
-		
+
 		// Create user
 		testUser := &models.UserDB{
 			ID:    "test-user-id",
@@ -208,27 +207,27 @@ func TestJobQueue(t *testing.T) {
 			Role:  "creator",
 		}
 		require.NoError(t, db.Create(testUser).Error)
-		
+
 		// Create job
 		job, err := queue.Enqueue(context.Background(), jobs.JobTypeCourseGeneration, "test-user-id", map[string]interface{}{}, jobs.JobPriorityNormal)
 		require.NoError(t, err)
 		assert.Equal(t, jobs.JobStatusPending, job.Status)
-		
+
 		// Cancel job
 		err = queue.CancelJob(context.Background(), job.ID)
 		require.NoError(t, err)
-		
+
 		// Verify job was cancelled
 		cancelledJob, err := queue.GetJob(context.Background(), job.ID)
 		require.NoError(t, err)
 		assert.Equal(t, jobs.JobStatusCancelled, cancelledJob.Status)
 	})
-	
+
 	t.Run("Update Progress", func(t *testing.T) {
 		// Create fresh queue to isolate test
 		db := setupTestDB(t)
 		queue := jobs.NewJobQueue(db, 2)
-		
+
 		// Create user
 		testUser := &models.UserDB{
 			ID:    "test-user-id",
@@ -236,27 +235,27 @@ func TestJobQueue(t *testing.T) {
 			Role:  "creator",
 		}
 		require.NoError(t, db.Create(testUser).Error)
-		
+
 		// Create job
 		job, err := queue.Enqueue(context.Background(), jobs.JobTypeCourseGeneration, "test-user-id", map[string]interface{}{}, jobs.JobPriorityNormal)
 		require.NoError(t, err)
 		assert.Equal(t, 0, job.Progress)
-		
+
 		// Update progress
 		err = queue.UpdateProgress(job.ID, 50)
 		require.NoError(t, err)
-		
+
 		// Verify progress was updated
 		updatedJob, err := queue.GetJob(context.Background(), job.ID)
 		require.NoError(t, err)
 		assert.Equal(t, 50, updatedJob.Progress)
 	})
-	
+
 	t.Run("Update Result", func(t *testing.T) {
 		// Create fresh queue to isolate test
 		db := setupTestDB(t)
 		queue := jobs.NewJobQueue(db, 2)
-		
+
 		// Create user
 		testUser := &models.UserDB{
 			ID:    "test-user-id",
@@ -264,12 +263,12 @@ func TestJobQueue(t *testing.T) {
 			Role:  "creator",
 		}
 		require.NoError(t, db.Create(testUser).Error)
-		
+
 		// Create job
 		job, err := queue.Enqueue(context.Background(), jobs.JobTypeCourseGeneration, "test-user-id", map[string]interface{}{}, jobs.JobPriorityNormal)
 		require.NoError(t, err)
 		assert.Nil(t, job.Result)
-		
+
 		// Update result
 		result := map[string]interface{}{
 			"output_path": "/path/to/output",
@@ -277,7 +276,7 @@ func TestJobQueue(t *testing.T) {
 		}
 		err = queue.UpdateResult(job.ID, result)
 		require.NoError(t, err)
-		
+
 		// Verify result was updated
 		updatedJob, err := queue.GetJob(context.Background(), job.ID)
 		require.NoError(t, err)
@@ -288,7 +287,7 @@ func TestJobQueue(t *testing.T) {
 
 func TestJobHandlers(t *testing.T) {
 	t.Skip("Skipping job handlers test for now - requires mock pipeline and storage")
-	
+
 	// This test would need to set up mocks for the pipeline and storage components
 	// For now, we're skipping it as it would require more complex setup
 }
@@ -299,7 +298,7 @@ func TestJobConversion(t *testing.T) {
 	queue := jobs.NewJobQueue(db, 2)
 	defer queue.Stop()
 	registerAllHandlers(queue)
-	
+
 	// Create test user to satisfy foreign key constraints
 	testUser := &models.UserDB{
 		ID:    "test-user-id",
@@ -307,8 +306,12 @@ func TestJobConversion(t *testing.T) {
 		Role:  "creator",
 	}
 	require.NoError(t, db.Create(testUser).Error)
-	
+
 	t.Run("Convert To DB Model", func(t *testing.T) {
+		// Create fresh queue to isolate test
+		db := setupTestDB(t)
+		queue := jobs.NewJobQueue(db, 2)
+
 		job := &jobs.Job{
 			ID:        "test-job-id",
 			UserID:    "test-user-id",
@@ -321,32 +324,12 @@ func TestJobConversion(t *testing.T) {
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
-		
-		// Test conversion by creating a DB model manually
-		payloadJSON, err := json.Marshal(job.Payload)
+
+		// Test conversion using the public method
+		jobDB, err := queue.ConvertToDBModel(job)
 		require.NoError(t, err)
-		
-		var resultJSON []byte
-		if job.Result != nil {
-			resultJSON, err = json.Marshal(job.Result)
-			require.NoError(t, err)
-		}
-		
-		jobDB := &models.JobDB{
-			ID:          job.ID,
-			UserID:      job.UserID,
-			Type:        string(job.Type),
-			Status:      string(job.Status),
-			Progress:    job.Progress,
-			Payload:     string(payloadJSON),
-			Result:      string(resultJSON),
-			Error:       job.Error,
-			CreatedAt:   job.CreatedAt,
-			UpdatedAt:   job.UpdatedAt,
-			StartedAt:   job.StartedAt,
-			CompletedAt: job.CompletedAt,
-		}
-		
+		require.NotNil(t, jobDB)
+
 		assert.Equal(t, job.ID, jobDB.ID)
 		assert.Equal(t, job.UserID, jobDB.UserID)
 		assert.Equal(t, string(job.Type), jobDB.Type)
@@ -355,8 +338,12 @@ func TestJobConversion(t *testing.T) {
 		assert.NotEmpty(t, jobDB.Payload)
 		assert.NotEmpty(t, jobDB.Result)
 	})
-	
+
 	t.Run("Convert From DB Model", func(t *testing.T) {
+		// Create fresh queue to isolate test
+		db := setupTestDB(t)
+		queue := jobs.NewJobQueue(db, 2)
+
 		jobDB := &models.JobDB{
 			ID:        "test-job-id",
 			UserID:    "test-user-id",
@@ -368,33 +355,12 @@ func TestJobConversion(t *testing.T) {
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
-		
-		// Test conversion by parsing the JSON manually
-		var payload map[string]interface{}
-		err := json.Unmarshal([]byte(jobDB.Payload), &payload)
+
+		// Test conversion using the public method
+		job, err := queue.ConvertFromDBModel(jobDB)
 		require.NoError(t, err)
-		
-		var result map[string]interface{}
-		if jobDB.Result != "" {
-			err = json.Unmarshal([]byte(jobDB.Result), &result)
-			require.NoError(t, err)
-		}
-		
-		job := &jobs.Job{
-			ID:          jobDB.ID,
-			UserID:      jobDB.UserID,
-			Type:        jobs.JobType(jobDB.Type),
-			Status:      jobs.JobStatus(jobDB.Status),
-			Progress:    jobDB.Progress,
-			Payload:     payload,
-			Result:      result,
-			Error:       jobDB.Error,
-			CreatedAt:   jobDB.CreatedAt,
-			UpdatedAt:   jobDB.UpdatedAt,
-			StartedAt:   jobDB.StartedAt,
-			CompletedAt: jobDB.CompletedAt,
-		}
-		
+		require.NotNil(t, job)
+
 		assert.Equal(t, jobDB.ID, job.ID)
 		assert.Equal(t, jobDB.UserID, job.UserID)
 		assert.Equal(t, jobs.JobType(jobDB.Type), job.Type)

@@ -18,31 +18,31 @@ import (
 // BarkTTSServer handles Bark text-to-speech generation
 type BarkTTSServer struct {
 	*BaseServerImpl
-	barkURL     string
-	modelPath   string
-	outputDir   string
-	maxLength   int
-	sampleRate  int
+	barkURL    string
+	modelPath  string
+	outputDir  string
+	maxLength  int
+	sampleRate int
 }
 
 // BarkRequest represents a Bark TTS generation request
 type BarkRequest struct {
-	Text       string            `json:"text"`
-	Voice      string            `json:"voice,omitempty"`
-	Speed      float64           `json:"speed,omitempty"`
-	Pitch      float64           `json:"pitch,omitempty"`
-	Generation int               `json:"generation,omitempty"`
-	Temperature float64          `json:"temperature,omitempty"`
-	Settings   map[string]interface{} `json:"settings,omitempty"`
+	Text        string                 `json:"text"`
+	Voice       string                 `json:"voice,omitempty"`
+	Speed       float64                `json:"speed,omitempty"`
+	Pitch       float64                `json:"pitch,omitempty"`
+	Generation  int                    `json:"generation,omitempty"`
+	Temperature float64                `json:"temperature,omitempty"`
+	Settings    map[string]interface{} `json:"settings,omitempty"`
 }
 
 // BarkResponse represents a Bark TTS generation response
 type BarkResponse struct {
-	Success   bool   `json:"success"`
-	AudioPath string `json:"audio_path,omitempty"`
-	Duration  float64 `json:"duration,omitempty"`
-	SampleRate int   `json:"sample_rate,omitempty"`
-	Error     string `json:"error,omitempty"`
+	Success    bool    `json:"success"`
+	AudioPath  string  `json:"audio_path,omitempty"`
+	Duration   float64 `json:"duration,omitempty"`
+	SampleRate int     `json:"sample_rate,omitempty"`
+	Error      string  `json:"error,omitempty"`
 }
 
 // NewBarkTTSServer creates a new Bark TTS server
@@ -54,19 +54,19 @@ func NewBarkTTSServer() *BarkTTSServer {
 		Timeout:    60 * time.Second,
 		MaxRetries: 3,
 	}
-	
+
 	server := &BarkTTSServer{
 		BaseServerImpl: NewBaseServer(config),
-		barkURL:       "http://localhost:8081/generate", // Default Bark server URL
-		modelPath:     "/models/bark",
-		outputDir:     "/tmp/bark_output",
-		maxLength:    200, // Maximum text length per generation
-		sampleRate:    24000,
+		barkURL:        "http://localhost:8081/generate", // Default Bark server URL
+		modelPath:      "/models/bark",
+		outputDir:      "/tmp/bark_output",
+		maxLength:      200, // Maximum text length per generation
+		sampleRate:     24000,
 	}
-	
+
 	// Ensure output directory exists
 	os.MkdirAll(server.outputDir, 0755)
-	
+
 	server.RegisterTools()
 	return server
 }
@@ -80,19 +80,19 @@ func NewBarkTTSServerWithConfig(barkURL, modelPath, outputDir string, maxLength,
 		Timeout:    60 * time.Second,
 		MaxRetries: 3,
 	}
-	
+
 	server := &BarkTTSServer{
 		BaseServerImpl: NewBaseServer(config),
-		barkURL:       barkURL,
-		modelPath:     modelPath,
-		outputDir:     outputDir,
-		maxLength:    maxLength,
-		sampleRate:    sampleRate,
+		barkURL:        barkURL,
+		modelPath:      modelPath,
+		outputDir:      outputDir,
+		maxLength:      maxLength,
+		sampleRate:     sampleRate,
 	}
-	
+
 	// Ensure output directory exists
 	os.MkdirAll(server.outputDir, 0755)
-	
+
 	server.RegisterTools()
 	return server
 }
@@ -153,13 +153,13 @@ func (s *BarkTTSServer) generateTTS(args map[string]interface{}) (interface{}, e
 
 	for i, chunk := range chunks {
 		chunkID := fmt.Sprintf("%d_%d", utils.HashString(text), i)
-		
+
 		// Generate audio for each chunk
 		audioPath, err := s.generateAudioChunk(chunk, voicePreset, speed, pitch, temperature, generation, chunkID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate audio for chunk %d: %w", i, err)
 		}
-		
+
 		audioFiles = append(audioFiles, audioPath)
 	}
 
@@ -174,38 +174,103 @@ func (s *BarkTTSServer) generateTTS(args map[string]interface{}) (interface{}, e
 	}
 
 	return map[string]interface{}{
-		"audio_path": finalAudioPath,
-		"text":       text,
-		"voice":      voicePreset,
-		"speed":      speed,
-		"pitch":      pitch,
-		"chunks":     len(chunks),
+		"audio_path":  finalAudioPath,
+		"text":        text,
+		"voice":       voicePreset,
+		"speed":       speed,
+		"pitch":       pitch,
+		"chunks":      len(chunks),
 		"sample_rate": s.sampleRate,
 	}, nil
 }
 
 // generateAudioChunk generates audio for a single text chunk
 func (s *BarkTTSServer) generateAudioChunk(text, voice string, speed, pitch, temperature float64, generation int, chunkID string) (string, error) {
-	request := BarkRequest{
-		Text:       text,
-		Voice:      voice,
-		Speed:      speed,
-		Pitch:      pitch,
-		Temperature: temperature,
-		Generation: generation,
-		Settings: map[string]interface{}{
-			"sample_rate": s.sampleRate,
-			"model_path":  s.modelPath,
-		},
+	// Use OpenAI TTS as primary implementation (more reliable than local Bark)
+	return s.callOpenAITTS(text, voice, chunkID)
+}
+
+// callOpenAITTS calls OpenAI TTS API
+func (s *BarkTTSServer) callOpenAITTS(text, voice, chunkID string) (string, error) {
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		return "", fmt.Errorf("OPENAI_API_KEY environment variable not set")
 	}
 
-	// Check if local Bark server is available
-	if s.isBarkServerRunning() {
-		return s.callBarkServer(request, chunkID)
+	// Map Bark voice names to OpenAI voices
+	openAIVoice := s.mapVoiceToOpenAI(voice)
+
+	requestBody := map[string]interface{}{
+		"model":           "tts-1",
+		"input":           text,
+		"voice":           openAIVoice,
+		"response_format": "mp3",
 	}
 
-	// Fallback to Python implementation
-	return s.callBarkPython(request, chunkID)
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), s.Config.Timeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/audio/speech", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to call OpenAI TTS API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("OpenAI TTS API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	// Save audio response to file
+	audioPath := filepath.Join(s.outputDir, fmt.Sprintf("%s.mp3", chunkID))
+	out, err := os.Create(audioPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create audio file: %w", err)
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to save audio file: %w", err)
+	}
+
+	return audioPath, nil
+}
+
+// mapVoiceToOpenAI maps Bark voice names to OpenAI TTS voices
+func (s *BarkTTSServer) mapVoiceToOpenAI(barkVoice string) string {
+	voiceMap := map[string]string{
+		"v2/en_speaker_0": "alloy",
+		"v2/en_speaker_1": "echo",
+		"v2/en_speaker_2": "fable",
+		"v2/en_speaker_3": "onyx",
+		"v2/en_speaker_4": "nova",
+		"v2/en_speaker_5": "shimmer",
+		"v2/en_speaker_6": "alloy", // default
+		"v2/en_speaker_7": "echo",
+		"v2/en_speaker_8": "fable",
+		"v2/en_speaker_9": "nova",
+	}
+
+	if openAIVoice, exists := voiceMap[barkVoice]; exists {
+		return openAIVoice
+	}
+
+	// Default to alloy if voice not found
+	return "alloy"
 }
 
 // isBarkServerRunning checks if Bark server is available
@@ -397,22 +462,22 @@ func (s *BarkTTSServer) combineAudioFiles(audioFiles []string, originalText stri
 	// For now, just return the first file
 	// In a real implementation, this would use FFmpeg or similar to concatenate audio
 	combinedPath := filepath.Join(s.outputDir, fmt.Sprintf("combined_%d.wav", utils.HashString(originalText)))
-	
+
 	// Copy first file as combined (placeholder)
 	src, err := os.ReadFile(audioFiles[0])
 	if err != nil {
 		return "", fmt.Errorf("failed to read first audio file: %w", err)
 	}
-	
+
 	if err := os.WriteFile(combinedPath, src, 0644); err != nil {
 		return "", fmt.Errorf("failed to write combined audio file: %w", err)
 	}
-	
+
 	// Clean up chunk files
 	for _, file := range audioFiles {
 		os.Remove(file)
 	}
-	
+
 	return combinedPath, nil
 }
 
@@ -505,13 +570,13 @@ func (s *BarkTTSServer) listVoices(args map[string]interface{}) (interface{}, er
 // getInfo returns Bark TTS server information
 func (s *BarkTTSServer) getInfo(args map[string]interface{}) (interface{}, error) {
 	return map[string]interface{}{
-		"name":        "Bark TTS Server",
-		"version":     "1.0.0",
-		"server_url":  s.barkURL,
-		"model_path":  s.modelPath,
-		"sample_rate": s.sampleRate,
-		"max_length":  s.maxLength,
-		"output_dir":  s.outputDir,
+		"name":           "Bark TTS Server",
+		"version":        "1.0.0",
+		"server_url":     s.barkURL,
+		"model_path":     s.modelPath,
+		"sample_rate":    s.sampleRate,
+		"max_length":     s.maxLength,
+		"output_dir":     s.outputDir,
 		"server_running": s.isBarkServerRunning(),
 	}, nil
 }

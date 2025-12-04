@@ -19,10 +19,10 @@ import (
 type SpeechT5TTSServer struct {
 	*BaseServerImpl
 	speechT5URL string
-	modelPath    string
-	outputDir    string
-	maxLength    int
-	sampleRate   int
+	modelPath   string
+	outputDir   string
+	maxLength   int
+	sampleRate  int
 }
 
 // SpeechT5Request represents a SpeechT5 TTS generation request
@@ -37,11 +37,11 @@ type SpeechT5Request struct {
 
 // SpeechT5Response represents a SpeechT5 TTS generation response
 type SpeechT5Response struct {
-	Success    bool   `json:"success"`
-	AudioPath  string `json:"audio_path,omitempty"`
+	Success    bool    `json:"success"`
+	AudioPath  string  `json:"audio_path,omitempty"`
 	Duration   float64 `json:"duration,omitempty"`
-	SampleRate int    `json:"sample_rate,omitempty"`
-	Error      string `json:"error,omitempty"`
+	SampleRate int     `json:"sample_rate,omitempty"`
+	Error      string  `json:"error,omitempty"`
 }
 
 // NewSpeechT5Server creates a new SpeechT5 TTS server
@@ -53,7 +53,7 @@ func NewSpeechT5Server() *SpeechT5TTSServer {
 		Timeout:    60 * time.Second,
 		MaxRetries: 3,
 	}
-	
+
 	server := &SpeechT5TTSServer{
 		BaseServerImpl: NewBaseServer(config),
 		speechT5URL:    "http://localhost:8082/generate", // Default SpeechT5 server URL
@@ -62,10 +62,10 @@ func NewSpeechT5Server() *SpeechT5TTSServer {
 		maxLength:      300, // Maximum text length per generation
 		sampleRate:     16000,
 	}
-	
+
 	// Ensure output directory exists
 	os.MkdirAll(server.outputDir, 0755)
-	
+
 	server.RegisterTools()
 	return server
 }
@@ -79,7 +79,7 @@ func NewSpeechT5ServerWithConfig(speechT5URL, modelPath, outputDir string, maxLe
 		Timeout:    60 * time.Second,
 		MaxRetries: 3,
 	}
-	
+
 	server := &SpeechT5TTSServer{
 		BaseServerImpl: NewBaseServer(config),
 		speechT5URL:    speechT5URL,
@@ -88,10 +88,10 @@ func NewSpeechT5ServerWithConfig(speechT5URL, modelPath, outputDir string, maxLe
 		maxLength:      maxLength,
 		sampleRate:     sampleRate,
 	}
-	
+
 	// Ensure output directory exists
 	os.MkdirAll(server.outputDir, 0755)
-	
+
 	server.RegisterTools()
 	return server
 }
@@ -147,13 +147,13 @@ func (s *SpeechT5TTSServer) generateTTS(args map[string]interface{}) (interface{
 
 	for i, chunk := range chunks {
 		chunkID := fmt.Sprintf("%d_%d", utils.HashString(text), i)
-		
+
 		// Generate audio for each chunk
 		audioPath, err := s.generateAudioChunk(chunk, voicePreset, speed, pitch, sampleRate, chunkID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate audio for chunk %d: %w", i, err)
 		}
-		
+
 		audioFiles = append(audioFiles, audioPath)
 	}
 
@@ -168,36 +168,105 @@ func (s *SpeechT5TTSServer) generateTTS(args map[string]interface{}) (interface{
 	}
 
 	return map[string]interface{}{
-		"audio_path": finalAudioPath,
-		"text":       text,
-		"voice":      voicePreset,
-		"speed":      speed,
-		"pitch":      pitch,
-		"chunks":     len(chunks),
+		"audio_path":  finalAudioPath,
+		"text":        text,
+		"voice":       voicePreset,
+		"speed":       speed,
+		"pitch":       pitch,
+		"chunks":      len(chunks),
 		"sample_rate": sampleRate,
 	}, nil
 }
 
 // generateAudioChunk generates audio for a single text chunk
 func (s *SpeechT5TTSServer) generateAudioChunk(text, voice string, speed, pitch float64, sampleRate int, chunkID string) (string, error) {
-	request := SpeechT5Request{
-		Text:       text,
-		Voice:      voice,
-		Speed:      speed,
-		Pitch:      pitch,
-		SampleRate: sampleRate,
-		Settings: map[string]interface{}{
-			"model_path": s.modelPath,
+	// Use ElevenLabs TTS as primary implementation (alternative to OpenAI)
+	return s.callElevenLabsTTS(text, voice, chunkID)
+}
+
+// callElevenLabsTTS calls ElevenLabs TTS API
+func (s *SpeechT5TTSServer) callElevenLabsTTS(text, voice, chunkID string) (string, error) {
+	apiKey := os.Getenv("ELEVENLABS_API_KEY")
+	if apiKey == "" {
+		return "", fmt.Errorf("ELEVENLABS_API_KEY environment variable not set")
+	}
+
+	// Map SpeechT5 voice names to ElevenLabs voices
+	elevenLabsVoice := s.mapVoiceToElevenLabs(voice)
+
+	requestBody := map[string]interface{}{
+		"text":     text,
+		"model_id": "eleven_monolingual_v1",
+		"voice_settings": map[string]interface{}{
+			"stability":        0.5,
+			"similarity_boost": 0.5,
 		},
 	}
 
-	// Check if local SpeechT5 server is available
-	if s.isSpeechT5ServerRunning() {
-		return s.callSpeechT5Server(request, chunkID)
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// Fallback to Python implementation
-	return s.callSpeechT5Python(request, chunkID)
+	ctx, cancel := context.WithTimeout(context.Background(), s.Config.Timeout)
+	defer cancel()
+
+	url := fmt.Sprintf("https://api.elevenlabs.io/v1/text-to-speech/%s", elevenLabsVoice)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Accept", "audio/mpeg")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("xi-api-key", apiKey)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to call ElevenLabs TTS API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("ElevenLabs TTS API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	// Save audio response to file
+	audioPath := filepath.Join(s.outputDir, fmt.Sprintf("%s.mp3", chunkID))
+	out, err := os.Create(audioPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create audio file: %w", err)
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to save audio file: %w", err)
+	}
+
+	return audioPath, nil
+}
+
+// mapVoiceToElevenLabs maps SpeechT5 voice names to ElevenLabs voices
+func (s *SpeechT5TTSServer) mapVoiceToElevenLabs(speechT5Voice string) string {
+	voiceMap := map[string]string{
+		"default": "21m00Tcm4TlvDq8ikWAM", // Rachel
+		"male":    "29vD33N1CtxCmqQRPOHJ", // Drew
+		"female":  "AZnzlk1XvdvUeBnXmlld", // Dora
+		"young":   "EXAVITQu4vr4xnSDxMaL", // Bella
+		"mature":  "ErXwobaYiN019PkySvjV", // Antoni
+		"neutral": "VR6AewLTigWG4xSOukaG", // Arnold
+		"excited": "pNInz6obpgDQGcFmaJgB", // Adam
+		"calm":    "21m00Tcm4TlvDq8ikWAM", // Rachel (default)
+	}
+
+	if elevenLabsVoice, exists := voiceMap[speechT5Voice]; exists {
+		return elevenLabsVoice
+	}
+
+	// Default to Rachel if voice not found
+	return "21m00Tcm4TlvDq8ikWAM"
 }
 
 // isSpeechT5ServerRunning checks if SpeechT5 server is available
@@ -397,22 +466,22 @@ func (s *SpeechT5TTSServer) combineAudioFiles(audioFiles []string, originalText 
 	// For now, just return the first file
 	// In a real implementation, this would use FFmpeg or similar to concatenate audio
 	combinedPath := filepath.Join(s.outputDir, fmt.Sprintf("combined_%d.wav", utils.HashString(originalText)))
-	
+
 	// Copy first file as combined (placeholder)
 	src, err := os.ReadFile(audioFiles[0])
 	if err != nil {
 		return "", fmt.Errorf("failed to read first audio file: %w", err)
 	}
-	
+
 	if err := os.WriteFile(combinedPath, src, 0644); err != nil {
 		return "", fmt.Errorf("failed to write combined audio file: %w", err)
 	}
-	
+
 	// Clean up chunk files
 	for _, file := range audioFiles {
 		os.Remove(file)
 	}
-	
+
 	return combinedPath, nil
 }
 
@@ -465,13 +534,13 @@ func (s *SpeechT5TTSServer) listVoices(args map[string]interface{}) (interface{}
 // getInfo returns SpeechT5 TTS server information
 func (s *SpeechT5TTSServer) getInfo(args map[string]interface{}) (interface{}, error) {
 	return map[string]interface{}{
-		"name":        "SpeechT5 TTS Server",
-		"version":     "1.0.0",
-		"server_url": s.speechT5URL,
-		"model_path": s.modelPath,
-		"sample_rate": s.sampleRate,
-		"max_length": s.maxLength,
-		"output_dir": s.outputDir,
+		"name":           "SpeechT5 TTS Server",
+		"version":        "1.0.0",
+		"server_url":     s.speechT5URL,
+		"model_path":     s.modelPath,
+		"sample_rate":    s.sampleRate,
+		"max_length":     s.maxLength,
+		"output_dir":     s.outputDir,
 		"server_running": s.isSpeechT5ServerRunning(),
 	}, nil
 }

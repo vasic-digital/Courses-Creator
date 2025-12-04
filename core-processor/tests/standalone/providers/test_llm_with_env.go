@@ -1,17 +1,17 @@
-package main
+package providers_test
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
+	"testing"
 
 	"github.com/course-creator/core-processor/config"
 	"github.com/course-creator/core-processor/llm"
 	"github.com/course-creator/core-processor/models"
 )
 
-func main() {
+func TestLLMWithEnv(t *testing.T) {
 	// Set test environment variables (these would normally be set externally)
 	os.Setenv("OPENAI_API_KEY", "sk-test-key-placeholder")
 	os.Setenv("ANTHROPIC_API_KEY", "sk-ant-test-key-placeholder")
@@ -19,12 +19,12 @@ func main() {
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		t.Fatalf("Failed to load config: %v", err)
 	}
 
 	fmt.Printf("LLM Default Provider: %s\n", cfg.LLM.DefaultProvider)
-	fmt.Printf("OpenAI API Key: %s\n", maskKey(cfg.LLM.OpenAI.APIKey))
-	fmt.Printf("Anthropic API Key: %s\n", maskKey(cfg.LLM.Anthropic.APIKey))
+	fmt.Printf("OpenAI API Key: %s\n", maskAPIKey(cfg.LLM.OpenAI.APIKey))
+	fmt.Printf("Anthropic API Key: %s\n", maskAPIKey(cfg.LLM.Anthropic.APIKey))
 
 	// Create LLM manager
 	llmManager := llm.NewProviderManager(&cfg.LLM)
@@ -76,7 +76,7 @@ func main() {
 	}
 }
 
-func maskKey(key string) string {
+func maskAPIKey(key string) string {
 	if key == "" {
 		return "[not set]"
 	}

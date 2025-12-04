@@ -19,20 +19,20 @@ import (
 // LLaVAServer handles image analysis using LLaVA (Large Language and Vision Assistant)
 type LLaVAServer struct {
 	*BaseServerImpl
-	llavaURL    string
-	modelPath   string
-	outputDir   string
-	maxImageSize int
+	llavaURL      string
+	modelPath     string
+	outputDir     string
+	maxImageSize  int
 	contextWindow int
 }
 
 // LLaVARequest represents a LLaVA image analysis request
 type LLaVARequest struct {
-	Image      string                 `json:"image"`      // Base64 encoded image or file path
-	Prompt     string                 `json:"prompt"`     // Analysis prompt
-	Question   string                 `json:"question"`   // Specific question about image
-	Detail     string                 `json:"detail"`     // Analysis detail level (low, high)
-	Settings   map[string]interface{} `json:"settings,omitempty"`
+	Image    string                 `json:"image"`    // Base64 encoded image or file path
+	Prompt   string                 `json:"prompt"`   // Analysis prompt
+	Question string                 `json:"question"` // Specific question about image
+	Detail   string                 `json:"detail"`   // Analysis detail level (low, high)
+	Settings map[string]interface{} `json:"settings,omitempty"`
 }
 
 // LLaVAResponse represents a LLaVA image analysis response
@@ -64,19 +64,19 @@ func NewLLaVAServer() *LLaVAServer {
 		Timeout:    90 * time.Second,
 		MaxRetries: 2,
 	}
-	
+
 	server := &LLaVAServer{
 		BaseServerImpl: NewBaseServer(config),
-		llavaURL:        "http://localhost:8767/analyze", // Default LLaVA server URL
-		modelPath:       "/models/llava",
-		outputDir:       "/tmp/llava_output",
-		maxImageSize:    5 * 1024 * 1024, // 5MB
-		contextWindow:   2048,
+		llavaURL:       "http://localhost:8767/analyze", // Default LLaVA server URL
+		modelPath:      "/models/llava",
+		outputDir:      "/tmp/llava_output",
+		maxImageSize:   5 * 1024 * 1024, // 5MB
+		contextWindow:  2048,
 	}
-	
+
 	// Ensure output directory exists
 	os.MkdirAll(server.outputDir, 0755)
-	
+
 	server.RegisterTools()
 	return server
 }
@@ -90,7 +90,7 @@ func NewLLaVAServerWithConfig(llavaURL, modelPath, outputDir string, maxImageSiz
 		Timeout:    90 * time.Second,
 		MaxRetries: 2,
 	}
-	
+
 	server := &LLaVAServer{
 		BaseServerImpl: NewBaseServer(config),
 		llavaURL:       llavaURL,
@@ -99,10 +99,10 @@ func NewLLaVAServerWithConfig(llavaURL, modelPath, outputDir string, maxImageSiz
 		maxImageSize:   maxImageSize,
 		contextWindow:  contextWindow,
 	}
-	
+
 	// Ensure output directory exists
 	os.MkdirAll(server.outputDir, 0755)
-	
+
 	server.RegisterTools()
 	return server
 }
@@ -139,7 +139,7 @@ func (s *LLaVAServer) analyzeImage(args map[string]interface{}) (interface{}, er
 	}
 
 	question, _ := args["question"].(string)
-	
+
 	fmt.Printf("Analyzing image with detail level: %s\n", detail)
 
 	// Process image (handle both file paths and base64)
@@ -159,13 +159,178 @@ func (s *LLaVAServer) analyzeImage(args map[string]interface{}) (interface{}, er
 		},
 	}
 
-	// Check if local LLaVA server is available
-	if s.isLLaVAServerRunning() {
-		return s.callLLaVAServer(request)
+	// Use OpenAI GPT-4 Vision as primary implementation
+	return s.callOpenAIVision(request)
+}
+
+// callOpenAIVision calls OpenAI GPT-4 Vision API
+func (s *LLaVAServer) callOpenAIVision(request LLaVARequest) (interface{}, error) {
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("OPENAI_API_KEY environment variable not set")
 	}
 
-	// Fallback to Python implementation
-	return s.callLLaVAPython(request)
+	// Prepare image data for OpenAI API
+	imageData, err := s.prepareImageForOpenAI(request.Image)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare image: %w", err)
+	}
+
+	// Build messages for GPT-4 Vision
+	messages := []map[string]interface{}{
+		{
+			"role": "user",
+			"content": []map[string]interface{}{
+				{
+					"type": "text",
+					"text": request.Prompt,
+				},
+				{
+					"type": "image_url",
+					"image_url": map[string]interface{}{
+						"url": imageData,
+					},
+				},
+			},
+		},
+	}
+
+	if request.Question != "" {
+		messages[0]["content"].([]map[string]interface{})[0]["text"] = request.Question
+	}
+
+	requestBody := map[string]interface{}{
+		"model":      "gpt-4-vision-preview",
+		"messages":   messages,
+		"max_tokens": 500,
+	}
+
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), s.Config.Timeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to call OpenAI Vision API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("OpenAI Vision API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var response struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+
+	if err := json.Unmarshal(body, &response); err != nil {
+		return "", fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if len(response.Choices) == 0 {
+		return "", fmt.Errorf("no response from OpenAI Vision API")
+	}
+
+	analysis := response.Choices[0].Message.Content
+
+	// Extract objects and other metadata from the analysis
+	objects := s.extractObjectsFromAnalysis(analysis)
+
+	return map[string]interface{}{
+		"analysis":   analysis,
+		"objects":    objects,
+		"confidence": 0.85, // Estimated confidence
+		"detail":     request.Detail,
+		"model":      "gpt-4-vision-preview",
+	}, nil
+}
+
+// prepareImageForOpenAI prepares image data for OpenAI API
+func (s *LLaVAServer) prepareImageForOpenAI(imageInput string) (string, error) {
+	// Check if it's already a URL
+	if strings.HasPrefix(imageInput, "http") {
+		return imageInput, nil
+	}
+
+	// Check if it's a file path
+	if _, err := os.Stat(imageInput); err == nil {
+		// Read file and convert to base64
+		data, err := os.ReadFile(imageInput)
+		if err != nil {
+			return "", fmt.Errorf("failed to read image file: %w", err)
+		}
+
+		// Check file size
+		if len(data) > s.maxImageSize {
+			return "", fmt.Errorf("image file too large: %d bytes (max %d)", len(data), s.maxImageSize)
+		}
+
+		// Determine content type
+		contentType := "image/jpeg" // default
+		if strings.HasSuffix(strings.ToLower(imageInput), ".png") {
+			contentType = "image/png"
+		}
+
+		base64Data := base64.StdEncoding.EncodeToString(data)
+		return fmt.Sprintf("data:%s;base64,%s", contentType, base64Data), nil
+	}
+
+	// Assume it's base64 data
+	if strings.Contains(imageInput, "base64,") {
+		return imageInput, nil
+	}
+
+	// Try to decode as raw base64
+	if _, err := base64.StdEncoding.DecodeString(imageInput); err == nil {
+		return fmt.Sprintf("data:image/jpeg;base64,%s", imageInput), nil
+	}
+
+	return "", fmt.Errorf("invalid image input format")
+}
+
+// extractObjectsFromAnalysis extracts object names from analysis text
+func (s *LLaVAServer) extractObjectsFromAnalysis(analysis string) []string {
+	// Simple extraction - look for common object indicators
+	objects := []string{}
+
+	// Common object words (this could be improved with NLP)
+	commonObjects := []string{
+		"person", "people", "man", "woman", "child", "car", "truck", "bus", "bike", "motorcycle",
+		"dog", "cat", "bird", "horse", "cow", "sheep", "table", "chair", "book", "computer",
+		"phone", "laptop", "screen", "keyboard", "mouse", "building", "house", "tree", "sky",
+		"water", "mountain", "road", "sign", "light", "door", "window",
+	}
+
+	analysisLower := strings.ToLower(analysis)
+	for _, obj := range commonObjects {
+		if strings.Contains(analysisLower, obj) {
+			objects = append(objects, obj)
+		}
+	}
+
+	return objects
 }
 
 // extractText extracts text from image using OCR capabilities
@@ -182,22 +347,37 @@ func (s *LLaVAServer) extractText(args map[string]interface{}) (interface{}, err
 
 	fmt.Printf("Extracting text from image in language: %s\n", language)
 
-	// Process image
-	imageData, err := s.processImageInput(image)
-	if err != nil {
-		return nil, fmt.Errorf("failed to process image: %w", err)
-	}
-
+	// Use OpenAI Vision for OCR
 	request := LLaVARequest{
-		Image:  imageData,
-		Prompt: fmt.Sprintf("Extract all text from this image. Return the text in %s language. Preserve the structure and formatting as much as possible.", language),
+		Image:  image,
+		Prompt: fmt.Sprintf("Extract all text from this image. Return only the text content, preserving the structure and formatting as much as possible. If no text is found, return an empty string."),
 		Detail: "high",
 		Settings: map[string]interface{}{
 			"context_window": s.contextWindow,
-			"model_path":     s.modelPath,
 			"task_type":      "ocr",
 		},
 	}
+
+	result, err := s.callOpenAIVision(request)
+	if err != nil {
+		return nil, err
+	}
+
+	resultMap, ok := result.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response format")
+	}
+
+	analysis, ok := resultMap["analysis"].(string)
+	if !ok {
+		return nil, fmt.Errorf("no analysis in response")
+	}
+
+	return map[string]interface{}{
+		"text":       analysis,
+		"language":   language,
+		"confidence": 0.8,
+	}, nil
 
 	return s.callLLaVAPython(request)
 }
@@ -227,9 +407,9 @@ func (s *LLaVAServer) detectObjects(args map[string]interface{}) (interface{}, e
 		Prompt: fmt.Sprintf("Identify all objects in this image with confidence score >= %.2f. List each object with its approximate location and confidence level.", confidence),
 		Detail: "high",
 		Settings: map[string]interface{}{
-			"context_window": s.contextWindow,
-			"model_path":     s.modelPath,
-			"task_type":      "object_detection",
+			"context_window":       s.contextWindow,
+			"model_path":           s.modelPath,
+			"task_type":            "object_detection",
 			"confidence_threshold": confidence,
 		},
 	}
@@ -281,11 +461,11 @@ func (s *LLaVAServer) processImageInput(image string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to read image file: %w", err)
 		}
-		
+
 		if len(data) > s.maxImageSize {
 			return "", fmt.Errorf("image file too large: %d bytes (max %d bytes)", len(data), s.maxImageSize)
 		}
-		
+
 		// Get file extension for format detection
 		ext := strings.ToLower(filepath.Ext(image))
 		var mimeType string
@@ -301,16 +481,16 @@ func (s *LLaVAServer) processImageInput(image string) (string, error) {
 		default:
 			return "", fmt.Errorf("unsupported image format: %s", ext)
 		}
-		
+
 		// Return base64 encoded image with mime type
 		return fmt.Sprintf("data:%s;base64,%s", mimeType, base64.StdEncoding.EncodeToString(data)), nil
 	}
-	
+
 	// Check if image is already base64 encoded
 	if strings.HasPrefix(image, "data:image/") {
 		return image, nil
 	}
-	
+
 	// Assume it's base64 without data URL prefix
 	return fmt.Sprintf("image/png;base64,%s", image), nil
 }

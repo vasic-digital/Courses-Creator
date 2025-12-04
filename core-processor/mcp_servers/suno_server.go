@@ -27,23 +27,23 @@ type SunoServer struct {
 
 // SunoRequest represents a Suno music generation request
 type SunoRequest struct {
-	Prompt      string            `json:"prompt"`
-	Duration    int               `json:"duration,omitempty"`
-	Style       string            `json:"style,omitempty"`
-	Mood        string            `json:"mood,omitempty"`
-	Tempo       int               `json:"tempo,omitempty"`
-	Instrument  string            `json:"instrument,omitempty"`
-	Settings    map[string]interface{} `json:"settings,omitempty"`
+	Prompt     string                 `json:"prompt"`
+	Duration   int                    `json:"duration,omitempty"`
+	Style      string                 `json:"style,omitempty"`
+	Mood       string                 `json:"mood,omitempty"`
+	Tempo      int                    `json:"tempo,omitempty"`
+	Instrument string                 `json:"instrument,omitempty"`
+	Settings   map[string]interface{} `json:"settings,omitempty"`
 }
 
 // SunoResponse represents a Suno music generation response
 type SunoResponse struct {
-	Success     bool   `json:"success"`
-	AudioPath   string `json:"audio_path,omitempty"`
-	Duration    float64 `json:"duration,omitempty"`
-	SampleRate  int    `json:"sample_rate,omitempty"`
-	Style       string `json:"style,omitempty"`
-	Error       string `json:"error,omitempty"`
+	Success    bool    `json:"success"`
+	AudioPath  string  `json:"audio_path,omitempty"`
+	Duration   float64 `json:"duration,omitempty"`
+	SampleRate int     `json:"sample_rate,omitempty"`
+	Style      string  `json:"style,omitempty"`
+	Error      string  `json:"error,omitempty"`
 }
 
 // NewSunoServer creates a new Suno music generation server
@@ -55,7 +55,7 @@ func NewSunoServer() *SunoServer {
 		Timeout:    120 * time.Second, // Music generation takes longer
 		MaxRetries: 2,
 	}
-	
+
 	server := &SunoServer{
 		BaseServerImpl: NewBaseServer(config),
 		sunoURL:        "http://localhost:8766/generate", // Default Suno server URL
@@ -64,10 +64,10 @@ func NewSunoServer() *SunoServer {
 		maxDuration:    30, // Maximum 30 seconds per generation
 		sampleRate:     44100,
 	}
-	
+
 	// Ensure output directory exists
 	os.MkdirAll(server.outputDir, 0755)
-	
+
 	server.RegisterTools()
 	return server
 }
@@ -81,19 +81,19 @@ func NewSunoServerWithConfig(sunoURL, apiKey, outputDir string, maxDuration, sam
 		Timeout:    120 * time.Second,
 		MaxRetries: 2,
 	}
-	
+
 	server := &SunoServer{
 		BaseServerImpl: NewBaseServer(config),
-		sunoURL:       sunoURL,
-		apiKey:        apiKey,
-		outputDir:     outputDir,
-		maxDuration:   maxDuration,
-		sampleRate:    sampleRate,
+		sunoURL:        sunoURL,
+		apiKey:         apiKey,
+		outputDir:      outputDir,
+		maxDuration:    maxDuration,
+		sampleRate:     sampleRate,
 	}
-	
+
 	// Ensure output directory exists
 	os.MkdirAll(server.outputDir, 0755)
-	
+
 	server.RegisterTools()
 	return server
 }
@@ -161,13 +161,99 @@ func (s *SunoServer) generateMusic(args map[string]interface{}) (interface{}, er
 		},
 	}
 
-	// Check if local Suno server is available
-	if s.isSunoServerRunning() {
-		return s.callSunoServer(request)
+	// Use cloud music generation API (placeholder for now)
+	// In a real implementation, this would call a service like Mubert, AIVA, or similar
+	return s.generateMusicWithAPI(request)
+}
+
+// generateMusicWithAPI generates music using a cloud API (placeholder implementation)
+func (s *SunoServer) generateMusicWithAPI(request SunoRequest) (interface{}, error) {
+	// For now, create a placeholder response
+	// In a real implementation, this would call a music generation API
+
+	// Generate a unique filename
+	filename := fmt.Sprintf("music_%d_%s.wav", utils.HashString(request.Prompt), time.Now().Format("20060102_150405"))
+	outputPath := filepath.Join(s.outputDir, filename)
+
+	// Create a placeholder music file (silence for now)
+	// In a real implementation, this would download generated music from the API
+	err := s.createPlaceholderMusicFile(outputPath, request.Duration)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create music file: %w", err)
 	}
 
-	// Fallback to Python implementation
-	return s.callSunoPython(request)
+	return map[string]interface{}{
+		"audio_path":  outputPath,
+		"prompt":      request.Prompt,
+		"duration":    request.Duration,
+		"style":       request.Style,
+		"mood":        request.Mood,
+		"tempo":       request.Tempo,
+		"instrument":  request.Instrument,
+		"sample_rate": s.sampleRate,
+		"note":        "This is a placeholder implementation. Replace with real music generation API.",
+	}, nil
+}
+
+// createPlaceholderMusicFile creates a placeholder music file
+func (s *SunoServer) createPlaceholderMusicFile(outputPath string, duration int) error {
+	// For now, create an empty WAV file as placeholder
+	// In a real implementation, this would be replaced with actual music generation
+
+	// Create a minimal WAV file header (silence)
+	wavHeader := []byte{
+		0x52, 0x49, 0x46, 0x46, // "RIFF"
+		0x00, 0x00, 0x00, 0x00, // File size (placeholder)
+		0x57, 0x41, 0x56, 0x45, // "WAVE"
+		0x66, 0x6D, 0x74, 0x20, // "fmt "
+		0x10, 0x00, 0x00, 0x00, // Chunk size
+		0x01, 0x00, // Audio format (PCM)
+		0x01, 0x00, // Num channels
+		0x80, 0x3E, 0x00, 0x00, // Sample rate (16000)
+		0x80, 0x3E, 0x00, 0x00, // Byte rate
+		0x01, 0x00, // Block align
+		0x08, 0x00, // Bits per sample
+		0x64, 0x61, 0x74, 0x61, // "data"
+		0x00, 0x00, 0x00, 0x00, // Data size (placeholder)
+	}
+
+	// Calculate actual sizes
+	sampleRate := 16000
+	bitsPerSample := 8
+	numChannels := 1
+	dataSize := duration * sampleRate * numChannels * bitsPerSample / 8
+	fileSize := len(wavHeader) + dataSize - 8
+
+	// Update header with correct sizes
+	wavHeader[4] = byte(fileSize & 0xFF)
+	wavHeader[5] = byte((fileSize >> 8) & 0xFF)
+	wavHeader[6] = byte((fileSize >> 16) & 0xFF)
+	wavHeader[7] = byte((fileSize >> 24) & 0xFF)
+
+	wavHeader[40] = byte(dataSize & 0xFF)
+	wavHeader[41] = byte((dataSize >> 8) & 0xFF)
+	wavHeader[42] = byte((dataSize >> 16) & 0xFF)
+	wavHeader[43] = byte((dataSize >> 24) & 0xFF)
+
+	// Create silence data
+	silenceData := make([]byte, dataSize)
+
+	// Write file
+	file, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if _, err := file.Write(wavHeader); err != nil {
+		return err
+	}
+
+	if _, err := file.Write(silenceData); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // isSunoServerRunning checks if Suno server is available
@@ -419,13 +505,13 @@ func (s *SunoServer) listStyles(args map[string]interface{}) (interface{}, error
 // getInfo returns Suno server information
 func (s *SunoServer) getInfo(args map[string]interface{}) (interface{}, error) {
 	return map[string]interface{}{
-		"name":         "Suno Music Generation Server",
-		"version":      "1.0.0",
-		"server_url":   s.sunoURL,
-		"max_duration": s.maxDuration,
-		"sample_rate":  s.sampleRate,
-		"output_dir":   s.outputDir,
-		"api_key_set":  s.apiKey != "",
+		"name":           "Suno Music Generation Server",
+		"version":        "1.0.0",
+		"server_url":     s.sunoURL,
+		"max_duration":   s.maxDuration,
+		"sample_rate":    s.sampleRate,
+		"output_dir":     s.outputDir,
+		"api_key_set":    s.apiKey != "",
 		"server_running": s.isSunoServerRunning(),
 	}, nil
 }

@@ -17,9 +17,9 @@ import (
 // OpenAIProvider represents OpenAI API provider
 type OpenAIProvider struct {
 	*BaseProvider
-	apiKey      string
-	model       string
-	baseURL     string
+	apiKey       string
+	model        string
+	baseURL      string
 	costPerToken float64
 }
 
@@ -31,7 +31,7 @@ func NewOpenAIProvider(apiKey, model string) *OpenAIProvider {
 	if model == "" {
 		model = "gpt-3.5-turbo"
 	}
-	
+
 	return &OpenAIProvider{
 		BaseProvider: NewBaseProvider("OpenAI", ProviderTypePaid),
 		apiKey:       apiKey,
@@ -56,11 +56,11 @@ func (p *OpenAIProvider) GenerateText(ctx context.Context, prompt string, option
 				"content": prompt,
 			},
 		},
-		"max_tokens":   2000,
-		"temperature":  0.7,
-		"top_p":        1,
+		"max_tokens":        2000,
+		"temperature":       0.7,
+		"top_p":             1,
 		"frequency_penalty": 0,
-		"presence_penalty": 0,
+		"presence_penalty":  0,
 	}
 
 	// Add quality settings
@@ -135,13 +135,13 @@ func (p *OpenAIProvider) GetCostEstimate(textLength int) float64 {
 // getOpenAICostPerToken returns cost per 1K tokens for OpenAI models
 func getOpenAICostPerToken(model string) float64 {
 	costs := map[string]float64{
-		"gpt-3.5-turbo":     0.002, // $0.002 per 1K tokens
-		"gpt-4":             0.03,  // $0.03 per 1K tokens
-		"gpt-4-turbo":       0.01,  // $0.01 per 1K tokens
-		"gpt-4o":            0.005, // $0.005 per 1K tokens
-		"gpt-4o-mini":       0.00015, // $0.00015 per 1K tokens
+		"gpt-3.5-turbo": 0.002,   // $0.002 per 1K tokens
+		"gpt-4":         0.03,    // $0.03 per 1K tokens
+		"gpt-4-turbo":   0.01,    // $0.01 per 1K tokens
+		"gpt-4o":        0.005,   // $0.005 per 1K tokens
+		"gpt-4o-mini":   0.00015, // $0.00015 per 1K tokens
 	}
-	
+
 	if cost, exists := costs[model]; exists {
 		return cost / 1000.0 // Convert to per-token cost
 	}
@@ -151,9 +151,9 @@ func getOpenAICostPerToken(model string) float64 {
 // AnthropicProvider represents Anthropic Claude API provider
 type AnthropicProvider struct {
 	*BaseProvider
-	apiKey      string
-	model       string
-	baseURL     string
+	apiKey       string
+	model        string
+	baseURL      string
 	costPerToken float64
 }
 
@@ -165,7 +165,7 @@ func NewAnthropicProvider(apiKey, model string) *AnthropicProvider {
 	if model == "" {
 		model = "claude-3-haiku-20240307"
 	}
-	
+
 	return &AnthropicProvider{
 		BaseProvider: NewBaseProvider("Anthropic", ProviderTypePaid),
 		apiKey:       apiKey,
@@ -183,7 +183,7 @@ func (p *AnthropicProvider) GenerateText(ctx context.Context, prompt string, opt
 
 	// Prepare request payload
 	requestBody := map[string]interface{}{
-		"model": p.model,
+		"model":      p.model,
 		"max_tokens": 2000,
 		"messages": []map[string]string{
 			{
@@ -263,12 +263,12 @@ func (p *AnthropicProvider) GetCostEstimate(textLength int) float64 {
 // getAnthropicCostPerToken returns cost per 1K tokens for Anthropic models
 func getAnthropicCostPerToken(model string) float64 {
 	costs := map[string]float64{
-		"claude-3-haiku-20240307":  0.00025, // $0.00025 per 1K tokens
-		"claude-3-sonnet-20240229": 0.003,   // $0.003 per 1K tokens
-		"claude-3-opus-20240229":  0.015,    // $0.015 per 1K tokens
-		"claude-3-5-sonnet-20241022": 0.003,  // $0.003 per 1K tokens
+		"claude-3-haiku-20240307":    0.00025, // $0.00025 per 1K tokens
+		"claude-3-sonnet-20240229":   0.003,   // $0.003 per 1K tokens
+		"claude-3-opus-20240229":     0.015,   // $0.015 per 1K tokens
+		"claude-3-5-sonnet-20241022": 0.003,   // $0.003 per 1K tokens
 	}
-	
+
 	if cost, exists := costs[model]; exists {
 		return cost / 1000.0 // Convert to per-token cost
 	}
@@ -290,7 +290,7 @@ func NewOllamaProvider(baseURL, model string) *OllamaProvider {
 	if model == "" {
 		model = "llama2"
 	}
-	
+
 	return &OllamaProvider{
 		BaseProvider: NewBaseProvider("Ollama", ProviderTypeFree),
 		baseURL:      baseURL,
@@ -418,4 +418,34 @@ func (p *OllamaProvider) IsAvailable() bool {
 	}
 
 	return false
+}
+
+// GetModel returns the model name for OpenAI provider
+func (p *OpenAIProvider) GetModel() string {
+	return p.model
+}
+
+// GetBaseURL returns the base URL for OpenAI provider
+func (p *OpenAIProvider) GetBaseURL() string {
+	return p.baseURL
+}
+
+// GetModel returns the model name for Anthropic provider
+func (p *AnthropicProvider) GetModel() string {
+	return p.model
+}
+
+// GetBaseURL returns the base URL for Anthropic provider
+func (p *AnthropicProvider) GetBaseURL() string {
+	return p.baseURL
+}
+
+// GetModel returns the model name for Ollama provider
+func (p *OllamaProvider) GetModel() string {
+	return p.model
+}
+
+// GetBaseURL returns the base URL for Ollama provider
+func (p *OllamaProvider) GetBaseURL() string {
+	return p.baseURL
 }

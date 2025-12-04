@@ -18,9 +18,9 @@ import (
 type JobType string
 
 const (
-	JobTypeCourseGeneration JobType = "course_generation"
-	JobTypeVideoProcessing  JobType = "video_processing"
-	JobTypeAudioGeneration  JobType = "audio_generation"
+	JobTypeCourseGeneration   JobType = "course_generation"
+	JobTypeVideoProcessing    JobType = "video_processing"
+	JobTypeAudioGeneration    JobType = "audio_generation"
 	JobTypeSubtitleGeneration JobType = "subtitle_generation"
 )
 
@@ -39,9 +39,9 @@ const (
 type JobPriority int
 
 const (
-	JobPriorityLow    JobPriority = 1
-	JobPriorityNormal JobPriority = 2
-	JobPriorityHigh   JobPriority = 3
+	JobPriorityLow      JobPriority = 1
+	JobPriorityNormal   JobPriority = 2
+	JobPriorityHigh     JobPriority = 3
 	JobPriorityCritical JobPriority = 4
 )
 
@@ -82,7 +82,7 @@ type JobQueue struct {
 // NewJobQueue creates a new job queue
 func NewJobQueue(db *gorm.DB, workers int) *JobQueue {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &JobQueue{
 		db:         db,
 		handlers:   make(map[JobType]JobHandler),
@@ -99,7 +99,7 @@ func NewJobQueue(db *gorm.DB, workers int) *JobQueue {
 func (jq *JobQueue) RegisterHandler(jobType JobType, handler JobHandler) {
 	jq.mu.Lock()
 	defer jq.mu.Unlock()
-	
+
 	jq.handlers[jobType] = handler
 }
 
@@ -107,28 +107,28 @@ func (jq *JobQueue) RegisterHandler(jobType JobType, handler JobHandler) {
 func (jq *JobQueue) Start() error {
 	jq.mu.Lock()
 	defer jq.mu.Unlock()
-	
+
 	if jq.running {
 		return fmt.Errorf("job queue is already running")
 	}
-	
+
 	jq.running = true
-	
+
 	// Start worker goroutines
 	for i := 0; i < jq.workers; i++ {
 		jq.wg.Add(1)
 		go jq.worker(i)
 	}
-	
+
 	// Start result processor
 	jq.wg.Add(1)
 	go jq.resultProcessor()
-	
+
 	// Load pending jobs from database
 	if err := jq.loadPendingJobs(); err != nil {
 		log.Printf("Warning: failed to load pending jobs: %v", err)
 	}
-	
+
 	log.Printf("Job queue started with %d workers", jq.workers)
 	return nil
 }
@@ -137,15 +137,15 @@ func (jq *JobQueue) Start() error {
 func (jq *JobQueue) Stop() {
 	jq.mu.Lock()
 	defer jq.mu.Unlock()
-	
+
 	if !jq.running {
 		return
 	}
-	
+
 	jq.running = false
 	jq.cancel()
 	jq.wg.Wait()
-	
+
 	log.Println("Job queue stopped")
 }
 
@@ -162,12 +162,12 @@ func (jq *JobQueue) Enqueue(ctx context.Context, jobType JobType, userID string,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	
+
 	// Save to database
 	if err := jq.saveJob(job); err != nil {
 		return nil, fmt.Errorf("failed to save job to database: %w", err)
 	}
-	
+
 	// Add to queue
 	select {
 	case jq.jobQueue <- job:
@@ -186,8 +186,8 @@ func (jq *JobQueue) GetJob(ctx context.Context, jobID string) (*Job, error) {
 	if err := jq.db.Where("id = ?", jobID).First(&jobDB).Error; err != nil {
 		return nil, fmt.Errorf("failed to find job: %w", err)
 	}
-	
-	return jq.convertFromDBModel(&jobDB)
+
+	return jq.ConvertFromDBModel(&jobDB)
 }
 
 // GetUserJobs retrieves jobs for a specific user
@@ -200,16 +200,16 @@ func (jq *JobQueue) GetUserJobs(ctx context.Context, userID string, limit, offse
 		Find(&jobsDB).Error; err != nil {
 		return nil, fmt.Errorf("failed to find user jobs: %w", err)
 	}
-	
+
 	jobs := make([]*Job, len(jobsDB))
 	for i, jobDB := range jobsDB {
-		job, err := jq.convertFromDBModel(&jobDB)
+		job, err := jq.ConvertFromDBModel(&jobDB)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert job %d: %w", i, err)
 		}
 		jobs[i] = job
 	}
-	
+
 	return jobs, nil
 }
 
@@ -219,27 +219,27 @@ func (jq *JobQueue) CancelJob(ctx context.Context, jobID string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	if job.Status != JobStatusPending && job.Status != JobStatusRunning {
 		return fmt.Errorf("cannot cancel job in %s status", job.Status)
 	}
-	
+
 	job.Status = JobStatusCancelled
 	job.UpdatedAt = time.Now()
-	
+
 	if err := jq.saveJob(job); err != nil {
 		return fmt.Errorf("failed to update job status: %w", err)
 	}
-	
+
 	return nil
 }
 
 // worker processes jobs from the queue
 func (jq *JobQueue) worker(id int) {
 	defer jq.wg.Done()
-	
+
 	log.Printf("Worker %d started", id)
-	
+
 	for {
 		select {
 		case <-jq.ctx.Done():
@@ -255,41 +255,41 @@ func (jq *JobQueue) worker(id int) {
 func (jq *JobQueue) processJob(job *Job) {
 	log.Printf("Processing job %s of type %s for user %s", job.ID, job.Type, job.UserID)
 	startTime := time.Now()
-	
+
 	// Update job status to running
 	job.Status = JobStatusRunning
 	now := time.Now()
 	job.StartedAt = &now
 	job.UpdatedAt = now
-	
+
 	if err := jq.saveJob(job); err != nil {
 		log.Printf("Failed to update job status to running: %v", err)
 		return
 	}
-	
+
 	// Get handler for job type
 	jq.mu.Lock()
 	handler, exists := jq.handlers[job.Type]
 	jq.mu.Unlock()
-	
+
 	if !exists {
 		errorMsg := fmt.Sprintf("no handler registered for job type: %s", job.Type)
 		jq.markJobFailed(job, errorMsg)
 		metrics.RecordJobCompletion("failed", string(job.Type), time.Since(startTime))
 		return
 	}
-	
+
 	// Execute job handler
 	err := handler(jq.ctx, job)
 	duration := time.Since(startTime)
-	
+
 	// Send job to result processor for final update
 	select {
 	case jq.resultChan <- job:
 	default:
 		log.Printf("Result channel is full, dropping result for job %s", job.ID)
 	}
-	
+
 	if err != nil {
 		jq.markJobFailed(job, err.Error())
 		metrics.RecordJobCompletion("failed", string(job.Type), duration)
@@ -302,7 +302,7 @@ func (jq *JobQueue) processJob(job *Job) {
 // resultProcessor processes job results
 func (jq *JobQueue) resultProcessor() {
 	defer jq.wg.Done()
-	
+
 	for {
 		select {
 		case <-jq.ctx.Done():
@@ -322,10 +322,10 @@ func (jq *JobQueue) markJobFailed(job *Job, errorMsg string) {
 	job.Status = JobStatusFailed
 	job.Error = &errorMsg
 	job.UpdatedAt = time.Now()
-	
+
 	now := time.Now()
 	job.CompletedAt = &now
-	
+
 	if err := jq.saveJob(job); err != nil {
 		log.Printf("Failed to mark job %s as failed: %v", job.ID, err)
 	}
@@ -336,10 +336,10 @@ func (jq *JobQueue) markJobCompleted(job *Job) {
 	job.Status = JobStatusCompleted
 	job.Progress = 100
 	job.UpdatedAt = time.Now()
-	
+
 	now := time.Now()
 	job.CompletedAt = &now
-	
+
 	if err := jq.saveJob(job); err != nil {
 		log.Printf("Failed to mark job %s as completed: %v", job.ID, err)
 	}
@@ -347,11 +347,11 @@ func (jq *JobQueue) markJobCompleted(job *Job) {
 
 // saveJob saves a job to the database
 func (jq *JobQueue) saveJob(job *Job) error {
-	jobDB, err := jq.convertToDBModel(job)
+	jobDB, err := jq.ConvertToDBModel(job)
 	if err != nil {
 		return fmt.Errorf("failed to convert job to DB model: %w", err)
 	}
-	
+
 	return jq.db.Save(jobDB).Error
 }
 
@@ -363,14 +363,14 @@ func (jq *JobQueue) loadPendingJobs() error {
 		Find(&jobsDB).Error; err != nil {
 		return fmt.Errorf("failed to load pending jobs: %w", err)
 	}
-	
+
 	for _, jobDB := range jobsDB {
-		job, err := jq.convertFromDBModel(&jobDB)
+		job, err := jq.ConvertFromDBModel(&jobDB)
 		if err != nil {
 			log.Printf("Failed to convert pending job %s: %v", jobDB.ID, err)
 			continue
 		}
-		
+
 		select {
 		case jq.jobQueue <- job:
 			log.Printf("Loaded pending job %s", job.ID)
@@ -378,17 +378,17 @@ func (jq *JobQueue) loadPendingJobs() error {
 			log.Printf("Queue is full, skipping pending job %s", job.ID)
 		}
 	}
-	
+
 	return nil
 }
 
-// convertToDBModel converts a Job to models.JobDB
-func (jq *JobQueue) convertToDBModel(job *Job) (*models.JobDB, error) {
+// ConvertToDBModel converts a Job to models.JobDB
+func (jq *JobQueue) ConvertToDBModel(job *Job) (*models.JobDB, error) {
 	payloadJSON, err := json.Marshal(job.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
-	
+
 	var resultJSON []byte
 	if job.Result != nil {
 		resultJSON, err = json.Marshal(job.Result)
@@ -396,7 +396,7 @@ func (jq *JobQueue) convertToDBModel(job *Job) (*models.JobDB, error) {
 			return nil, fmt.Errorf("failed to marshal result: %w", err)
 		}
 	}
-	
+
 	return &models.JobDB{
 		ID:          job.ID,
 		UserID:      job.UserID,
@@ -413,20 +413,20 @@ func (jq *JobQueue) convertToDBModel(job *Job) (*models.JobDB, error) {
 	}, nil
 }
 
-// convertFromDBModel converts models.JobDB to Job
-func (jq *JobQueue) convertFromDBModel(jobDB *models.JobDB) (*Job, error) {
+// ConvertFromDBModel converts models.JobDB to Job
+func (jq *JobQueue) ConvertFromDBModel(jobDB *models.JobDB) (*Job, error) {
 	var payload map[string]interface{}
 	if err := json.Unmarshal([]byte(jobDB.Payload), &payload); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal payload: %w", err)
 	}
-	
+
 	var result map[string]interface{}
 	if jobDB.Result != "" {
 		if err := json.Unmarshal([]byte(jobDB.Result), &result); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal result: %w", err)
 		}
 	}
-	
+
 	return &Job{
 		ID:          jobDB.ID,
 		UserID:      jobDB.UserID,
@@ -448,7 +448,7 @@ func (jq *JobQueue) UpdateProgress(jobID string, progress int) error {
 	if progress < 0 || progress > 100 {
 		return fmt.Errorf("progress must be between 0 and 100")
 	}
-	
+
 	return jq.db.Model(&models.JobDB{}).
 		Where("id = ?", jobID).
 		Updates(map[string]interface{}{
@@ -463,7 +463,7 @@ func (jq *JobQueue) UpdateResult(jobID string, result map[string]interface{}) er
 	if err != nil {
 		return fmt.Errorf("failed to marshal result: %w", err)
 	}
-	
+
 	return jq.db.Model(&models.JobDB{}).
 		Where("id = ?", jobID).
 		Updates(map[string]interface{}{

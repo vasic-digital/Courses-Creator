@@ -1,14 +1,15 @@
-package main
+package providers_test
 
 import (
 	"context"
 	"fmt"
+	"testing"
 
 	"github.com/course-creator/core-processor/llm"
 	"github.com/course-creator/core-processor/models"
 )
 
-func main() {
+func TestProvidersDirect(t *testing.T) {
 	fmt.Println("Testing LLM Provider Implementations")
 	fmt.Println("=================================")
 	
