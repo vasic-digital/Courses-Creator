@@ -160,3 +160,21 @@ type Job struct {
 	StartedAt   *time.Time             `json:"started_at,omitempty"`
 	CompletedAt *time.Time             `json:"completed_at,omitempty"`
 }
+
+// Video represents a video with accessibility features
+type Video struct {
+	ID            string     `json:"id"`
+	Title         string     `json:"title"`
+	URL           string     `json:"url"`
+	Duration      int        `json:"duration"`
+	HasCaptions   bool       `json:"has_captions"`
+	HasTranscript bool       `json:"has_transcript"`
+	HasAudio      bool       `json:"has_audio"`
+	HasAudioDesc  bool       `json:"has_audio_desc"`
+	Language      string     `json:"language"`
+	ThumbnailURL  *string    `json:"thumbnail_url,omitempty"`
+	Transcript    *string    `json:"transcript,omitempty"`
+	AudioDescURL  *string    `json:"audio_desc_url,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
