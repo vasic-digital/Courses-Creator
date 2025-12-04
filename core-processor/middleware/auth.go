@@ -124,9 +124,9 @@ func (am *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 
 		// Extract token from "Bearer <token>" format
 		tokenParts := strings.SplitN(authHeader, " ", 2)
-		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
+		if len(tokenParts) != 2 || strings.ToLower(tokenParts[0]) != "bearer" {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid authorization header format",
+				"error": "Invalid authorization header format, expected 'Bearer <token>'",
 				"code":  "INVALID_AUTH_FORMAT",
 			})
 			c.Abort()

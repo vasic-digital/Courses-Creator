@@ -83,8 +83,14 @@ func (p *OpenAIProvider) GenerateText(ctx context.Context, prompt string, option
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+p.apiKey)
 
-	// Send request
-	client := &http.Client{Timeout: 60 * time.Second}
+	// Send request with timeout
+	client := &http.Client{
+		Timeout: 60 * time.Second,
+		Transport: &http.Transport{
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 10 * time.Second,
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		p.SetAvailable(false)
@@ -215,8 +221,14 @@ func (p *AnthropicProvider) GenerateText(ctx context.Context, prompt string, opt
 	req.Header.Set("x-api-key", p.apiKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
 
-	// Send request
-	client := &http.Client{Timeout: 60 * time.Second}
+	// Send request with timeout
+	client := &http.Client{
+		Timeout: 60 * time.Second,
+		Transport: &http.Transport{
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 10 * time.Second,
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		p.SetAvailable(false)

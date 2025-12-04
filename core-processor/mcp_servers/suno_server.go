@@ -271,7 +271,16 @@ func (s *SunoServer) isSunoServerRunning() bool {
 	}
 	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			TLSHandshakeTimeout:   5 * time.Second,
+			ResponseHeaderTimeout: 5 * time.Second,
+		},
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return false
 	}
@@ -297,7 +306,16 @@ func (s *SunoServer) callSunoServer(request SunoRequest) (interface{}, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	// Create HTTP client with timeout and security settings
+	client := &http.Client{
+		Timeout: s.Config.Timeout,
+		Transport: &http.Transport{
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 10 * time.Second,
+		},
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call Suno server: %w", err)
 	}
