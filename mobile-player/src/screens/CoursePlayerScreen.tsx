@@ -7,6 +7,8 @@ import {
   ScrollView,
   Dimensions,
 } from 'react-native';
+import Video from 'react-native-video';
+import Sound from 'react-native-sound';
 import { Course, Lesson, PlayerState } from '../types';
 
 const { width } = Dimensions.get('window');
@@ -70,12 +72,32 @@ const CoursePlayerScreen: React.FC<CoursePlayerScreenProps> = ({ route, navigati
     <View style={styles.container}>
       {/* Video Player Area */}
       <View style={styles.playerContainer}>
-        <View style={styles.videoPlaceholder}>
-          <Text style={styles.placeholderText}>
-            {currentLesson?.videoUrl ? 'Video Player' : 'Audio Player'}
-          </Text>
-          <Text style={styles.lessonTitleText}>{currentLesson?.title}</Text>
-        </View>
+        {currentLesson?.videoUrl ? (
+          <Video
+            source={{ uri: currentLesson.videoUrl }}
+            style={styles.videoPlayer}
+            controls={true}
+            resizeMode="contain"
+            onEnd={nextLesson}
+            onProgress={(data) => {
+              // Optional: Track progress
+            }}
+            onError={(error) => {
+              console.error('Video Error:', error);
+            }}
+          />
+        ) : currentLesson?.audioUrl ? (
+          <View style={styles.audioPlayerContainer}>
+            <Text style={styles.placeholderText}>Audio Player</Text>
+            <Text style={styles.lessonTitleText}>{currentLesson?.title}</Text>
+            {/* Note: For actual audio playback, you would need to implement sound playback logic */}
+          </View>
+        ) : (
+          <View style={styles.videoPlaceholder}>
+            <Text style={styles.placeholderText}>No Media Available</Text>
+            <Text style={styles.lessonTitleText}>{currentLesson?.title}</Text>
+          </View>
+        )}
 
         {/* Player Controls */}
         <View style={styles.controls}>
@@ -118,6 +140,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#333',
+  },
+  videoPlayer: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  audioPlayerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#222',
   },
   placeholderText: {
     color: '#fff',

@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Helmet from 'react-helmet-async';
+import ReactPlayer from 'react-player';
 
 import { apiService } from '@/services';
 import { Course, Lesson } from '@/types';
@@ -41,6 +42,7 @@ const BackButton = styled.button`
 const CoursePlayerPage: React.FC = () => {
   const { courseId, lessonId } = useParams<{ courseId: string; lessonId?: string }>();
   const navigate = useNavigate();
+  const [isPlaying, setIsPlaying] = useState(false);
   
   const {
     data: course,
@@ -67,6 +69,17 @@ const CoursePlayerPage: React.FC = () => {
   };
 
   const currentLesson = getCurrentLesson();
+
+  const handleVideoEnd = () => {
+    // Auto-play next lesson if available
+    if (course && currentLesson) {
+      const currentIndex = course.lessons.findIndex(l => l.id === currentLesson.id);
+      if (currentIndex < course.lessons.length - 1) {
+        const nextLesson = course.lessons[currentIndex + 1];
+        navigate(`/courses/${courseId}/lessons/${nextLesson.id}`);
+      }
+    }
+  };
 
   const handleLessonClick = (lessonId: string) => {
     navigate(`/courses/${courseId}/${lessonId}`);
@@ -153,8 +166,65 @@ const CoursePlayerPage: React.FC = () => {
                   fontSize: '18px',
                   marginBottom: '20px'
                 }}>
-                  Video Player Placeholder
-                  {/* Video player will be implemented here */}
+                {currentLesson.videoUrl ? (
+                  <ReactPlayer
+                    url={currentLesson.videoUrl}
+                    controls={true}
+                    width="100%"
+                    height="100%"
+                    playing={isPlaying}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onEnded={handleVideoEnd}
+                    config={{
+                      file: {
+                        attributes: {
+                          controlsList: 'nodownload',
+                        }
+                      }
+                    }}
+                  />
+                ) : currentLesson.audioUrl ? (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '100%',
+                    height: '100%',
+                    padding: '20px'
+                  }}>
+                    <ReactPlayer
+                      url={currentLesson.audioUrl}
+                      controls={true}
+                      width="100%"
+                      height="50px"
+                      playing={isPlaying}
+                      onPlay={() => setIsPlaying(true)}
+                      onPause={() => setIsPlaying(false)}
+                      onEnded={handleVideoEnd}
+                      config={{
+                        file: {
+                          attributes: {
+                            controlsList: 'nodownload',
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    color: 'white',
+                    fontSize: '18px'
+                  }}>
+                    No media available for this lesson
+                  </div>
+                )}
                 </div>
                 
                 {currentLesson.content && (

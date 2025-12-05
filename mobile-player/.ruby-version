@@ -1,0 +1,19 @@
+# [Choice] TypeScript version.
+# [REQUIRED] Choose the TypeScript version
+# TS_VERSION=4.8.4
+
+# [Choice] Node.js version
+# [REQUIRED] Choose Node.js version
+# NODE_VERSION=16
+
+# [Choice] Yarn version
+# [REQUIRED] Choose Yarn version
+# YARN_VERSION=1.22.19
+
+# [Choice] Ruby version
+# [REQUIRED] Choose Ruby version
+# RUBY_VERSION=3.0.0
+
+# [Choice] Fastlane version
+# [REQUIRED] Choose Fastlane version
+# FASTLANE_VERSION=2.206.2

@@ -3,7 +3,6 @@ package llm
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/course-creator/core-processor/models"
 )
@@ -82,20 +81,14 @@ func NewFreeProvider(name, apiEndpoint, apiKey string) *FreeProvider {
 // GenerateText generates text using the free provider
 func (p *FreeProvider) GenerateText(ctx context.Context, prompt string, options models.ProcessingOptions) (string, error) {
 	// Try to use local models first (Ollama)
-	if ollama := NewOllamaProvider("", ""); ollama.IsAvailable() {
+	ollamaURL := "http://localhost:11434"
+	if ollama := NewOllamaProvider(ollamaURL, "llama2"); ollama.IsAvailable() {
+		fmt.Printf("Using Ollama provider at %s\n", ollamaURL)
 		return ollama.GenerateText(ctx, prompt, options)
 	}
 
-	// Fallback to placeholder response
-	fmt.Printf("Generating text with free provider %s (placeholder)\n", p.name)
-
-	// Simulate API call
-	select {
-	case <-time.After(100 * time.Millisecond):
-		return fmt.Sprintf("Generated text from %s: %s", p.name, prompt[:min(50, len(prompt))]), nil
-	case <-ctx.Done():
-		return "", ctx.Err()
-	}
+	// If no local model available, return error instead of placeholder
+	return "", fmt.Errorf("no free LLM provider available. Configure Ollama or use a paid provider")
 }
 
 // GetCostEstimate returns cost estimate (free = 0)
@@ -123,16 +116,16 @@ func NewPaidProvider(name, apiEndpoint, apiKey string, costPerToken float64) *Pa
 
 // GenerateText generates text using the paid provider
 func (p *PaidProvider) GenerateText(ctx context.Context, prompt string, options models.ProcessingOptions) (string, error) {
-	// Placeholder implementation
-	// In real implementation, make API call to paid service
-	fmt.Printf("Generating text with paid provider %s\n", p.name)
-
-	// Simulate API call
-	select {
-	case <-time.After(200 * time.Millisecond):
-		return fmt.Sprintf("High-quality text from %s: %s", p.name, minString(prompt, 50)), nil
-	case <-ctx.Done():
-		return "", ctx.Err()
+	// Use real provider based on name
+	switch p.name {
+	case "OpenAI":
+		openaiProvider := NewOpenAIProvider(p.apiKey, "gpt-3.5-turbo")
+		return openaiProvider.GenerateText(ctx, prompt, options)
+	case "Anthropic":
+		anthropicProvider := NewAnthropicProvider(p.apiKey, "claude-3-sonnet-20240229")
+		return anthropicProvider.GenerateText(ctx, prompt, options)
+	default:
+		return "", fmt.Errorf("unsupported paid provider: %s", p.name)
 	}
 }
 
