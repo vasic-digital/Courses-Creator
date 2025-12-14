@@ -25,6 +25,7 @@ func NewCourseRepository(db *database.DB) *CourseRepository {
 func (r *CourseRepository) CreateCourse(course *models.Course) (*models.CourseDB, error) {
 	courseDB := &models.CourseDB{
 		ID:          course.ID,
+		UserID:      "system", // Default user ID for system-created courses
 		Title:       course.Title,
 		Description: course.Description,
 		CreatedAt:   time.Now(),

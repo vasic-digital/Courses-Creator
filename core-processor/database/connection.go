@@ -38,9 +38,24 @@ func NewDatabase(config *Config) (*DB, error) {
 		config = DefaultConfig()
 	}
 
-	// Ensure data directory exists
-	if err := os.MkdirAll(config.Path[:len(config.Path)-len("/course_creator.db")], 0755); err != nil {
-		return nil, fmt.Errorf("failed to create data directory: %w", err)
+	// Only create directory for file-based databases, not for in-memory
+	if config.Path != ":memory:" && config.Path != "file::memory:?cache=shared" {
+		// Ensure data directory exists
+		dir := config.Path
+		// Find last slash to get directory
+		if idx := len(dir) - 1; idx >= 0 {
+			for i := idx; i >= 0; i-- {
+				if dir[i] == '/' {
+					dir = dir[:i]
+					break
+				}
+			}
+		}
+		if dir != "" && dir != config.Path {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return nil, fmt.Errorf("failed to create data directory: %w", err)
+			}
+		}
 	}
 
 	// Configure GORM logger

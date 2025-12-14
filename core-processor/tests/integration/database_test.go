@@ -36,17 +36,24 @@ func TestDatabase_Integration(t *testing.T) {
 
 		// Test Create
 		createdCourse, err := courseRepo.CreateCourse(course)
-		require.NoError(t, err)
+		if err != nil {
+			t.Logf("CreateCourse error: %v", err)
+		}
+		require.NoError(t, err, "CreateCourse should succeed")
+		require.NotNil(t, createdCourse, "Created course should not be nil")
 		assert.Equal(t, course.ID, createdCourse.ID)
 		assert.Equal(t, "Test Course", createdCourse.Title)
 
 		// Test Get by ID
 		retrievedCourse, err := courseRepo.GetCourseByID(course.ID)
+		if err != nil {
+			t.Logf("GetCourseByID error: %v", err)
+		}
 		require.NoError(t, err)
 		assert.Equal(t, course.ID, retrievedCourse.ID)
 		assert.Equal(t, "Test Course", retrievedCourse.Title)
 
-		// Test Update - need to convert CourseDB back to Course for update
+		// Test Update
 		updateCourse := &models.Course{
 			ID:          retrievedCourse.ID,
 			Title:       "Updated Test Course",
@@ -82,10 +89,12 @@ func TestDatabase_Integration(t *testing.T) {
 		// Create a job using the correct type
 		job := &models.ProcessingJobDB{
 			ID:        uuid.New().String(),
-			Type:      "course_generation",
 			Status:    "pending",
-			UserID:    "test-user",
+			InputPath: "/test/input.md",
+			Options:   "{}",
+			Progress:  0,
 			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		}
 
 		// Test Create
@@ -128,9 +137,8 @@ func TestDatabase_Integration(t *testing.T) {
 		assert.Equal(t, 0, len(pendingJobs))
 
 		// Test Delete
-		deleted, err := jobRepo.DeleteJob(job.ID)
+		err = jobRepo.DeleteJob(job.ID)
 		require.NoError(t, err)
-		assert.True(t, deleted)
 
 		// Verify deletion
 		deletedJob, err := jobRepo.GetJobByID(job.ID)
