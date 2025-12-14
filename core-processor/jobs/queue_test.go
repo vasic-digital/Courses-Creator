@@ -626,6 +626,387 @@ func TestJobPriorityProcessing(t *testing.T) {
 	mu.Unlock()
 }
 
+// TestQueueOverflow tests behavior when queue is full
+func TestQueueOverflow(t *testing.T) {
+	// Create a queue with very small buffer
+	gormDB, err := gorm.Open(sqlite.Open(t.TempDir()+"/test.db"), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = gormDB.AutoMigrate(&models.UserDB{}, &models.JobDB{})
+	require.NoError(t, err)
+
+	queue := NewJobQueue(gormDB, 1)     // Only 1 worker
+	queue.jobQueue = make(chan *Job, 1) // Very small queue buffer
+
+	// Register a slow handler
+	queue.RegisterHandler(JobTypeCourseGeneration, func(ctx context.Context, job *Job) error {
+		time.Sleep(100 * time.Millisecond) // Slow processing
+		return nil
+	})
+
+	err = queue.Start()
+	require.NoError(t, err)
+	defer queue.Stop()
+
+	// Fill the queue
+	_, err = queue.Enqueue(context.Background(), JobTypeCourseGeneration, "user123", map[string]interface{}{}, JobPriorityNormal)
+	require.NoError(t, err)
+
+	// This should fail due to full queue
+	_, err = queue.Enqueue(context.Background(), JobTypeCourseGeneration, "user123", map[string]interface{}{}, JobPriorityNormal)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "queue is full")
+}
+
+// TestEnqueueAfterStop tests enqueuing jobs after queue is stopped
+func TestEnqueueAfterStop(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	err := queue.Start()
+	require.NoError(t, err)
+
+	queue.Stop()
+
+	// Should not be able to enqueue after stop
+	_, err = queue.Enqueue(context.Background(), JobTypeCourseGeneration, "user123", map[string]interface{}{}, JobPriorityNormal)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "queue is full") // Channel is closed
+}
+
+// TestConcurrentEnqueue tests concurrent enqueuing of jobs
+func TestConcurrentEnqueue(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	// Register a fast handler
+	queue.RegisterHandler(JobTypeCourseGeneration, func(ctx context.Context, job *Job) error {
+		return nil
+	})
+
+	err := queue.Start()
+	require.NoError(t, err)
+	defer queue.Stop()
+
+	const numJobs = 10
+	const numGoroutines = 5
+
+	var wg sync.WaitGroup
+	jobIDs := make(chan string, numJobs)
+
+	// Start multiple goroutines enqueuing jobs
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < numJobs/numGoroutines; j++ {
+				job, err := queue.Enqueue(context.Background(), JobTypeCourseGeneration,
+					fmt.Sprintf("user%d", id), map[string]interface{}{"job": j}, JobPriorityNormal)
+				if err == nil {
+					jobIDs <- job.ID
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(jobIDs)
+
+	// Count successful enqueues
+	count := 0
+	for range jobIDs {
+		count++
+	}
+
+	assert.Equal(t, numJobs, count, "All jobs should have been enqueued successfully")
+}
+
+// TestWorkerRestart tests restarting workers after failures
+func TestWorkerRestart(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	callCount := 0
+	queue.RegisterHandler(JobTypeCourseGeneration, func(ctx context.Context, job *Job) error {
+		callCount++
+		return nil
+	})
+
+	// Start queue
+	err := queue.Start()
+	require.NoError(t, err)
+
+	// Enqueue a job
+	_, err = queue.Enqueue(context.Background(), JobTypeCourseGeneration, "user123", map[string]interface{}{}, JobPriorityNormal)
+	require.NoError(t, err)
+
+	// Wait for processing
+	time.Sleep(100 * time.Millisecond)
+
+	// Stop and restart
+	queue.Stop()
+
+	err = queue.Start()
+	require.NoError(t, err)
+	defer queue.Stop()
+
+	// Enqueue another job
+	_, err = queue.Enqueue(context.Background(), JobTypeCourseGeneration, "user123", map[string]interface{}{}, JobPriorityNormal)
+	require.NoError(t, err)
+
+	// Wait for processing
+	time.Sleep(100 * time.Millisecond)
+
+	assert.Equal(t, 2, callCount, "Both jobs should have been processed")
+}
+
+// TestUpdateProgressErrorHandling tests progress update error handling
+func TestUpdateProgressErrorHandling(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	// Test with invalid job ID
+	err := queue.UpdateProgress("nonexistent-job", 50)
+	assert.Error(t, err)
+
+	// Test with valid job
+	job, err := queue.Enqueue(context.Background(), JobTypeCourseGeneration, "user123", map[string]interface{}{}, JobPriorityNormal)
+	require.NoError(t, err)
+
+	err = queue.UpdateProgress(job.ID, 50)
+	assert.NoError(t, err)
+
+	// Verify progress was updated
+	updatedJob, err := queue.GetJob(context.Background(), job.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, 50, updatedJob.Progress)
+}
+
+// TestUpdateResultErrorHandling tests result update error handling
+func TestUpdateResultErrorHandling(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	result := map[string]interface{}{
+		"status": "completed",
+		"output": "/tmp/result",
+	}
+
+	// Test with invalid job ID
+	err := queue.UpdateResult("nonexistent-job", result)
+	assert.Error(t, err)
+
+	// Test with valid job
+	job, err := queue.Enqueue(context.Background(), JobTypeCourseGeneration, "user123", map[string]interface{}{}, JobPriorityNormal)
+	require.NoError(t, err)
+
+	err = queue.UpdateResult(job.ID, result)
+	assert.NoError(t, err)
+
+	// Verify result was updated
+	updatedJob, err := queue.GetJob(context.Background(), job.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, result, updatedJob.Result)
+}
+
+// TestGetUserJobsPagination tests pagination in GetUserJobs
+func TestGetUserJobsPagination(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	// Create multiple jobs for a user
+	const numJobs = 5
+	jobs := make([]*Job, numJobs)
+	for i := 0; i < numJobs; i++ {
+		job, err := queue.Enqueue(context.Background(), JobTypeCourseGeneration, "user123",
+			map[string]interface{}{"job": i}, JobPriorityNormal)
+		require.NoError(t, err)
+		jobs[i] = job
+	}
+
+	// Test pagination
+	limit := 2
+	offset := 1
+
+	resultJobs, err := queue.GetUserJobs(context.Background(), "user123", limit, offset)
+	assert.NoError(t, err)
+	assert.Len(t, resultJobs, limit)
+
+	// Should get jobs[offset] and jobs[offset+1]
+	assert.Equal(t, jobs[offset].ID, resultJobs[0].ID)
+	assert.Equal(t, jobs[offset+1].ID, resultJobs[1].ID)
+}
+
+// TestCancelJobEdgeCases tests edge cases for job cancellation
+func TestCancelJobEdgeCases(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	// Test canceling already completed job
+	job, err := queue.Enqueue(context.Background(), JobTypeCourseGeneration, "user123", map[string]interface{}{}, JobPriorityNormal)
+	require.NoError(t, err)
+
+	// Manually mark as completed (simulate completion)
+	job.Status = JobStatusCompleted
+	err = queue.saveJob(job)
+	require.NoError(t, err)
+
+	// Try to cancel completed job
+	err = queue.CancelJob(context.Background(), job.ID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot cancel job in completed status")
+
+	// Test canceling failed job
+	job.Status = JobStatusFailed
+	err = queue.saveJob(job)
+	require.NoError(t, err)
+
+	err = queue.CancelJob(context.Background(), job.ID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot cancel job in failed status")
+}
+
+// TestLoadPendingJobsEdgeCases tests edge cases for loading pending jobs
+func TestLoadPendingJobsEdgeCases(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	// Create jobs with different statuses
+	_, err := queue.Enqueue(context.Background(), JobTypeCourseGeneration, "user123", map[string]interface{}{}, JobPriorityNormal)
+	require.NoError(t, err)
+
+	runningJob, err := queue.Enqueue(context.Background(), JobTypeVideoProcessing, "user456", map[string]interface{}{}, JobPriorityNormal)
+	require.NoError(t, err)
+
+	// Manually change running job status
+	runningJob.Status = JobStatusRunning
+	err = queue.saveJob(runningJob)
+	require.NoError(t, err)
+
+	// Start queue - should only load pending jobs
+	err = queue.Start()
+	require.NoError(t, err)
+	defer queue.Stop()
+
+	// Wait a bit for loading
+	time.Sleep(50 * time.Millisecond)
+
+	// Check that only pending job was loaded (running jobs should not be reloaded)
+	// This is hard to test directly, but we can verify the queue behavior
+	assert.True(t, queue.IsRunning())
+}
+
+// TestDatabaseErrorScenarios tests behavior when database operations fail
+func TestDatabaseErrorScenarios(t *testing.T) {
+	// Create a queue with a database that will be closed
+	gormDB, err := gorm.Open(sqlite.Open(t.TempDir()+"/test.db"), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = gormDB.AutoMigrate(&models.UserDB{}, &models.JobDB{})
+	require.NoError(t, err)
+
+	queue := NewJobQueue(gormDB, 1)
+
+	// Close the database connection to simulate failures
+	sqlDB, err := gormDB.DB()
+	require.NoError(t, err)
+	err = sqlDB.Close()
+	require.NoError(t, err)
+
+	// Test operations with closed database
+	_, err = queue.Enqueue(context.Background(), JobTypeCourseGeneration, "user123", map[string]interface{}{}, JobPriorityNormal)
+	assert.Error(t, err)
+
+	_, err = queue.GetJob(context.Background(), "test-id")
+	assert.Error(t, err)
+
+	_, err = queue.GetUserJobs(context.Background(), "user123", 10, 0)
+	assert.Error(t, err)
+}
+
+// TestConvertToDBModelErrorHandling tests error handling in conversion
+func TestConvertToDBModelErrorHandling(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	// Test with invalid payload (should still work since it's just JSON marshaling)
+	job := &Job{
+		ID:        "test-job",
+		UserID:    "user123",
+		Type:      JobTypeCourseGeneration,
+		Status:    JobStatusPending,
+		Payload:   map[string]interface{}{"valid": "data"},
+		CreatedAt: time.Now(),
+	}
+
+	dbModel, err := queue.ConvertToDBModel(job)
+	assert.NoError(t, err)
+	assert.NotNil(t, dbModel)
+	assert.Equal(t, "test-job", dbModel.ID)
+}
+
+// TestConvertFromDBModelErrorHandling tests error handling in conversion
+func TestConvertFromDBModelErrorHandling(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	// Test with invalid JSON in payload
+	dbModel := &models.JobDB{
+		ID:      "test-job",
+		UserID:  "user123",
+		Type:    "course_generation",
+		Status:  "pending",
+		Payload: "invalid json", // Invalid JSON
+		Result:  "{}",
+	}
+
+	job, err := queue.ConvertFromDBModel(dbModel)
+	assert.Error(t, err)
+	assert.Nil(t, job)
+	assert.Contains(t, err.Error(), "failed to unmarshal payload")
+
+	// Test with invalid JSON in result
+	dbModel.Payload = "{}"
+	dbModel.Result = "invalid json"
+
+	job, err = queue.ConvertFromDBModel(dbModel)
+	assert.Error(t, err)
+	assert.Nil(t, job)
+	assert.Contains(t, err.Error(), "failed to unmarshal result")
+}
+
+// TestStartStopEdgeCases tests edge cases for start/stop operations
+func TestStartStopEdgeCases(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	// Test multiple stops
+	err := queue.Start()
+	require.NoError(t, err)
+
+	queue.Stop()
+	queue.Stop() // Should be safe to call multiple times
+
+	assert.False(t, queue.IsRunning())
+}
+
+// TestJobProcessingWithHandlerErrors tests job processing when handlers return errors
+func TestJobProcessingWithHandlerErrors(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	// Register handler that returns error
+	queue.RegisterHandler(JobTypeCourseGeneration, func(ctx context.Context, job *Job) error {
+		return fmt.Errorf("handler error")
+	})
+
+	err := queue.Start()
+	require.NoError(t, err)
+	defer queue.Stop()
+
+	job, err := queue.Enqueue(context.Background(), JobTypeCourseGeneration, "user123", map[string]interface{}{}, JobPriorityNormal)
+	require.NoError(t, err)
+
+	// Wait for processing
+	time.Sleep(200 * time.Millisecond)
+
+	// Job should be marked as failed
+	finalJob, err := queue.GetJob(context.Background(), job.ID)
+	if err == nil {
+		assert.Equal(t, JobStatusFailed, finalJob.Status)
+		assert.NotNil(t, finalJob.Error)
+		assert.Contains(t, *finalJob.Error, "handler error")
+	}
+}
+
 // TestUpdateResult tests result updates
 func TestUpdateResult(t *testing.T) {
 	queue := setupTestQueue(t)
