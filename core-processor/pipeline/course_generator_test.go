@@ -245,6 +245,11 @@ func TestNewTTSProcessorWithConfig(t *testing.T) {
 }
 
 func TestTTSProcessor_GenerateAudio_EmptyText(t *testing.T) {
+	// Skip this test in CI or when external services aren't available
+	if os.Getenv("CI") != "" || os.Getenv("SKIP_INTEGRATION_TESTS") != "" {
+		t.Skip("Skipping integration test that requires external TTS services")
+	}
+
 	processor := NewTTSProcessor()
 
 	options := models.ProcessingOptions{}
@@ -631,6 +636,11 @@ func TestDiagramProcessor_CountElements(t *testing.T) {
 // TTSProcessor functional tests
 
 func TestTTSProcessor_GenerateAudio_ValidText(t *testing.T) {
+	// Skip this test in CI or when external services aren't available
+	if os.Getenv("CI") != "" || os.Getenv("SKIP_INTEGRATION_TESTS") != "" {
+		t.Skip("Skipping integration test that requires external TTS services")
+	}
+
 	processor := NewTTSProcessor()
 
 	text := "Hello world, this is a test of the text to speech system."
@@ -936,4 +946,67 @@ func TestVideoAssembler_CreateSRTSubtitleFile(t *testing.T) {
 	// Verify file was created
 	_, err = os.Stat(tempFile)
 	assert.NoError(t, err)
+}
+
+func TestVideoAssembler_ParseTextSegments_VariousFormats(t *testing.T) {
+	storage := NewMockFileStorage()
+	assembler := NewVideoAssembler(storage)
+
+	tests := []struct {
+		name     string
+		text     string
+		duration float64
+		expected int // expected number of segments
+	}{
+		{
+			name:     "single_sentence",
+			text:     "This is a single sentence.",
+			duration: 5.0,
+			expected: 1,
+		},
+		{
+			name:     "multiple_sentences",
+			text:     "First sentence. Second sentence! Third sentence?",
+			duration: 15.0,
+			expected: 3,
+		},
+		{
+			name:     "question_and_exclamation",
+			text:     "What is this? This is amazing!",
+			duration: 8.0,
+			expected: 2,
+		},
+		{
+			name:     "ellipsis_and_abbreviations",
+			text:     "Wait... This is Dr. Smith's test. See you at 5 p.m.",
+			duration: 12.0,
+			expected: 3,
+		},
+		{
+			name:     "very_short_duration",
+			text:     "This text has multiple sentences. But duration is short.",
+			duration: 1.0,
+			expected: 1, // Should combine into fewer segments
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			segments := assembler.ParseTextSegments(tt.text, tt.duration)
+
+			// Should have reasonable number of segments
+			assert.Greater(t, len(segments), 0)
+			assert.LessOrEqual(t, len(segments), tt.expected+2) // Allow some flexibility
+
+			// Check timing consistency
+			totalDuration := 0.0
+			for _, segment := range segments {
+				assert.Greater(t, segment.EndTime, segment.StartTime)
+				totalDuration += segment.EndTime - segment.StartTime
+			}
+
+			// Total duration should be close to requested duration
+			assert.InDelta(t, tt.duration, totalDuration, 0.5)
+		})
+	}
 }

@@ -1,11 +1,24 @@
 # Test Coverage Analysis Report
 
 ## Executive Summary
-- **Overall Coverage**: 47.6%
+- **Overall Coverage**: 39.8% (updated)
 - **Total Functions**: 284 functions analyzed
 - **0% Coverage Functions**: 112 functions (39.4%)
 - **100% Coverage Functions**: 58 functions (20.4%)
 - **Critical Gaps**: Core pipeline, LLM providers, file storage, utilities
+
+## Recent Progress (December 14, 2025)
+### ✅ Completed:
+1. **Fixed background generator test** - Updated `saveBackground` to use storage interface
+2. **Skipped integration tests** - Added `SKIP_INTEGRATION_TESTS` environment variable support
+3. **Enhanced video assembler tests** - Added comprehensive `ParseTextSegments` test cases
+4. **Created mock infrastructure** - Complete mock framework in `pipeline/test_helpers.go`
+
+### 🔧 Current Status:
+- **Pipeline tests**: Passing with integration tests skipped
+- **Mock infrastructure**: Complete and working
+- **External dependencies**: Properly mocked or skipped
+- **Test reliability**: Improved with proper isolation
 
 ## Coverage by Package
 
@@ -21,10 +34,13 @@
 - `job_handlers.go:312` - GetJobTypes (0%)
 - `job_handlers.go:340` - GetSystemJobs (0%)
 
-### Pipeline Layer (12.4% coverage)
-**Critical Gaps:**
-- `background_generator.go:281` - Generate (0%)
-- `background_generator.go:409` - Generate (0%)
+### Pipeline Layer (38.0% coverage - IMPROVED)
+**✅ Fixed/Improved:**
+- `background_generator.go:281` - Generate (NOW TESTED)
+- `background_generator.go:409` - Generate (NOW TESTED)
+- `video_assembler.go` - Multiple methods now tested
+
+**Remaining Critical Gaps:**
 - `course_generator.go:153` - generateLesson (0%)
 - `course_generator.go:208` - assembleCourse (0%)
 - `course_generator.go:242` - createCourseIndex (0%)
@@ -32,7 +48,7 @@
 - `course_generator.go:383` - createCourseManifest (0%)
 - `diagram_processor.go:320` - generateTextBasedDiagram (0%)
 - `tts_processor.go:272` - generateSpeechT5TTS (0%)
-- `video_assembler.go:102` - CreateVideo (0%)
+- `video_assembler.go:102` - CreateVideo (0%) - Complex integration test needed
 
 ### LLM Providers (0% coverage)
 **All functions untested:**
@@ -56,18 +72,31 @@
 - `s3.go:160` - CreateDir (0%)
 - `s3.go:179` - GetURL (0%)
 
-### Utilities (0% coverage)
-**All functions untested:**
+### Utilities (68.3% coverage - SIGNIFICANTLY IMPROVED)
+**✅ Now Tested:**
+- `common.go:49` - EnsureDir (100%)
+- `common.go:54` - FileExists (100%)
+- `common.go:60` - CopyFile (100%)
+- `common.go:78` - CleanTempFiles (81.8%)
+- `common.go:99` - SanitizeFilename (100%)
+- `common.go:116` - GetFileExtension (100%)
+- `common.go:130` - Retry (100%)
+- `common.go:152` - WriteFile (100%)
+- `markdown_parser.go:18` - NewMarkdownParser (100%)
+- `markdown_parser.go:27` - Parse (100%)
+- `markdown_parser.go:45` - extractTitle (100%)
+- `markdown_parser.go:55` - extractSections (100%)
+- `markdown_parser.go:100` - extractDescription (100%)
+- `markdown_parser.go:120` - extractMetadata (100%)
+- `markdown_parser.go:131` - extractImages (100%)
+
+**Remaining Gaps:**
 - `common.go:17` - HashString (0%)
 - `common.go:26` - GenerateID (0%)
 - `common.go:33` - ExecuteCommand (0%)
 - `common.go:39` - ExecuteCommandWithOutput (0%)
-- `common.go:49` - EnsureDir (0%)
-- `common.go:54` - FileExists (0%)
-- `common.go:60` - CopyFile (0%)
-- `common.go:78` - CleanTempFiles (0%)
-- `markdown_parser.go:18` - NewMarkdownParser (0%)
-- `markdown_parser.go:27` - Parse (0%)
+- `common.go:121` - GetFileSize (0%)
+- `common.go:145` - SafeClose (0%)
 
 ### Services (68.3% coverage)
 **Gaps:**
@@ -152,32 +181,23 @@
 
 ## Immediate Actions
 
-### 1. Create Test Infrastructure
-```bash
-# Create test directories
-mkdir -p tests/unit/{api,pipeline,llm,services}
-mkdir -p tests/integration/{database,storage}
-mkdir -p tests/contract/{external,formats}
-mkdir -p tests/e2e/{workflows,pipelines}
-```
+### ✅ Completed:
+1. **Created comprehensive mock infrastructure** in `pipeline/test_helpers.go`
+2. **Fixed test compilation issues** across pipeline tests
+3. **Added integration test skipping** via `SKIP_INTEGRATION_TESTS` env var
+4. **Enhanced video assembler tests** with comprehensive test cases
 
-### 2. Set Up Test Utilities
-- Mock generators for external services
-- Test data factories
-- Common test helpers
-- Environment setup/teardown
+### 🔄 In Progress:
+1. **Course generation pipeline tests** - Mock LLM integration
+2. **File storage interface tests** - Local storage implementation
+3. **Utility function tests** - Core helper functions
 
-### 3. Implement Critical Tests
-1. Course generation pipeline (mock LLM)
-2. File storage operations (local/S3)
-3. API authentication/authorization
-4. Database CRUD operations
-
-### 4. CI/CD Integration
-- GitHub Actions workflow
-- Coverage reporting
-- Test result aggregation
-- Automated deployment gates
+### 📋 Next Actions:
+1. **Create course generator unit tests** with mocked dependencies
+2. **Implement diagram processor tests** for text-based diagram generation
+3. **Add TTS processor unit tests** with mocked external services
+4. **Create API handler tests** using httptest framework
+5. **Set up CI/CD with coverage reporting**
 
 ## Success Metrics
 - **Target Coverage**: 85% overall
@@ -209,8 +229,27 @@ mkdir -p tests/e2e/{workflows,pipelines}
 5. Implement integration tests
 6. Add performance/security tests
 
----
+## Progress Summary
 
-*Report generated: $(date)*
-*Coverage data source: coverage.out*
+### Key Achievements:
+1. **Mock Infrastructure**: Complete mock framework for testing pipeline components
+2. **Test Isolation**: Proper separation of unit vs integration tests
+3. **Fixed Test Failures**: Background generator now uses storage interface correctly
+4. **Enhanced Coverage**: Utility functions now have 68.3% coverage (from 0%)
+
+### Remaining Challenges:
+1. **External Dependencies**: TTS, LLM, and FFmpeg integration tests still problematic
+2. **Complex Pipeline Tests**: Course generator has many interconnected dependencies
+3. **API Layer Testing**: HTTP handlers need comprehensive testing framework
+
+### Recommendations:
+1. **Continue with unit tests** for remaining pipeline components
+2. **Create integration test suite** for external services (marked with build tags)
+3. **Implement API tests** using httptest package
+4. **Add database layer tests** with test containers
+
+---
+*Report updated: December 14, 2025*
+*Coverage data source: coverage.out (with SKIP_INTEGRATION_TESTS=1)*
 *Total functions analyzed: 284*
+*Overall coverage: 39.8%*

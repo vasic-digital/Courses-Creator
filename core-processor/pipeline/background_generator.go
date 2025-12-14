@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"image"
@@ -8,7 +9,6 @@ import (
 	"image/draw"
 	"image/png"
 	"math/rand"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -268,13 +268,14 @@ func (bg *BackgroundGenerator) selectPattern(options models.ProcessingOptions) P
 
 // saveBackground saves the generated background image
 func (bg *BackgroundGenerator) saveBackground(img *image.RGBA, path string) error {
-	file, err := os.Create(path)
-	if err != nil {
+	// Create a buffer to hold the PNG data
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
 		return err
 	}
-	defer file.Close()
 
-	return png.Encode(file, img)
+	// Save to storage
+	return bg.storage.Save(path, buf.Bytes())
 }
 
 // SolidPattern implementation
