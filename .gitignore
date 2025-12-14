@@ -84,3 +84,12 @@ coverage/
 secrets/
 *.key
 *.pem
+
+# NPM cache
+npm-cache/
+
+# Generated outputs
+output/
+
+# Crush tool cache/logs
+.crush/
