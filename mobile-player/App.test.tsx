@@ -7,8 +7,8 @@ jest.mock('@react-navigation/native', () => ({
   NavigationContainer: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-jest.mock('@react-navigation/stack', () => ({
-  createStackNavigator: () => ({
+jest.mock('@react-navigation/native-stack', () => ({
+  createNativeStackNavigator: () => ({
     Navigator: ({ children }: { children: React.ReactNode }) => children,
     Screen: () => null,
   }),
