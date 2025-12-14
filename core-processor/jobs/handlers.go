@@ -268,3 +268,15 @@ func (jc *JobContext) HandleSubtitleGeneration(ctx context.Context, job *Job) er
 	log.Printf("Subtitle generation completed for job %s", job.ID)
 	return nil
 }
+
+// RegisterDefaultHandlersForQueue registers default job handlers on a queue
+// This is a convenience function for testing and initialization
+func RegisterDefaultHandlersForQueue(queue *JobQueue, storage filestorage.StorageInterface, markdownParser *utils.MarkdownParser, courseGenerator *pipeline.CourseGenerator) {
+	jc := &JobContext{
+		Queue:           queue,
+		Storage:         storage,
+		MarkdownParser:  markdownParser,
+		CourseGenerator: courseGenerator,
+	}
+	jc.RegisterDefaultHandlers()
+}

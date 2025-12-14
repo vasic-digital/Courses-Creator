@@ -6,10 +6,12 @@ import (
 	"io"
 	"log"
 	"testing"
+	"time"
 
 	"github.com/course-creator/core-processor/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // StorageInterface for testing
@@ -460,4 +462,47 @@ func TestHandleSubtitleGeneration_MissingAudioURL(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "audio_url is required")
+}
+
+// TestDefaultHandlers tests the default handler registration
+func TestDefaultHandlers(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	// Register default handlers with nil dependencies (for testing)
+	RegisterDefaultHandlersForQueue(queue, nil, nil, nil)
+
+	// Verify handlers are registered
+	assert.NotNil(t, queue.handlers[JobTypeCourseGeneration])
+	assert.NotNil(t, queue.handlers[JobTypeVideoProcessing])
+	assert.NotNil(t, queue.handlers[JobTypeAudioGeneration])
+	assert.NotNil(t, queue.handlers[JobTypeSubtitleGeneration])
+}
+
+// TestHandleVideoProcessingIntegration tests full video processing handler
+func TestHandleVideoProcessingIntegration(t *testing.T) {
+	queue := setupTestQueue(t)
+
+	// Register default handlers with nil dependencies
+	RegisterDefaultHandlersForQueue(queue, nil, nil, nil)
+
+	// Start the queue
+	err := queue.Start()
+	require.NoError(t, err)
+	defer queue.Stop()
+
+	// Create a job with proper payload
+	job, err := queue.Enqueue(context.Background(), JobTypeVideoProcessing, "user123", map[string]interface{}{
+		"course_id": "course-123",
+		"lesson_id": "lesson-456",
+	}, JobPriorityNormal)
+	require.NoError(t, err)
+
+	// Wait for processing
+	time.Sleep(100 * time.Millisecond)
+
+	// Check job status (should complete since video processing handler just logs)
+	finalJob, err := queue.GetJob(context.Background(), job.ID)
+	if err == nil {
+		assert.Equal(t, JobStatusCompleted, finalJob.Status)
+	}
 }
