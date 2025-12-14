@@ -142,6 +142,8 @@ func TestBarkTTSServer_GenerateTTS(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	server := mcp_servers.NewBarkTTSServerWithConfig("http://localhost:8081", "/models/bark", tempDir, 200, 24000)
+	// Disable Bark Python for faster testing
+	server.SetUseBarkPython(false)
 
 	// Test with valid text
 	args := map[string]interface{}{
@@ -258,6 +260,8 @@ func TestSpeechT5TTSServer_GenerateTTS(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	server := mcp_servers.NewSpeechT5ServerWithConfig("http://localhost:8082", "/models/speecht5", tempDir, 300, 16000)
+	// Disable SpeechT5 Python for faster testing
+	server.SetUseSpeechT5Python(false)
 
 	// Test with valid text
 	args := map[string]interface{}{

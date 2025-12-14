@@ -9,6 +9,8 @@ import (
 
 	"github.com/course-creator/core-processor/jobs"
 	"github.com/course-creator/core-processor/models"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -20,11 +22,44 @@ func setupTestDB(tb testing.TB) *gorm.DB {
 		tb.Fatalf("Failed to create test database: %v", err)
 	}
 
+	// Get underlying SQL DB to configure SQLite
+	sqlDB, err := db.DB()
+	if err != nil {
+		tb.Fatalf("Failed to get SQL DB: %v", err)
+	}
+	// Enable foreign keys
+	_, err = sqlDB.Exec("PRAGMA foreign_keys = ON")
+	if err != nil {
+		tb.Fatalf("Failed to enable foreign keys: %v", err)
+	}
+	// Configure SQLite for better concurrent access
+	_, err = sqlDB.Exec("PRAGMA busy_timeout = 5000")
+	if err != nil {
+		tb.Fatalf("Failed to set busy timeout: %v", err)
+	}
+	_, err = sqlDB.Exec("PRAGMA journal_mode = WAL")
+	if err != nil {
+		tb.Fatalf("Failed to set journal mode: %v", err)
+	}
+
 	// Migrate the schema
-	err = db.AutoMigrate(&models.ProcessingJobDB{})
+	err = db.AutoMigrate(
+		&models.UserDB{},
+		&models.JobDB{},
+		&models.ProcessingJobDB{},
+	)
 	if err != nil {
 		tb.Fatalf("Failed to migrate test database: %v", err)
 	}
+
+	// Add BeforeCreate hooks for UUID generation
+	db.Callback().Create().Before("gorm:create").Register("generate_user_id", func(db *gorm.DB) {
+		if user, ok := db.Statement.Dest.(*models.UserDB); ok {
+			if user.ID == "" {
+				user.ID = uuid.New().String()
+			}
+		}
+	})
 
 	return db
 }
@@ -33,6 +68,20 @@ func BenchmarkJobQueue_Enqueue(b *testing.B) {
 	// Create mock DB
 	db := setupTestDB(b)
 	queue := jobs.NewJobQueue(db, 2)
+
+	// Create test user
+	testUser := &models.UserDB{
+		ID:    "test-user",
+		Email: "test@example.com",
+		Role:  "creator",
+	}
+	require.NoError(b, db.Create(testUser).Error)
+
+	// Register dummy handlers
+	queue.RegisterHandler(jobs.JobTypeVideoProcessing, func(ctx context.Context, job *jobs.Job) error {
+		return nil
+	})
+
 	queue.Start()
 	defer queue.Stop()
 
@@ -54,6 +103,20 @@ func BenchmarkJobQueue_GetJob(b *testing.B) {
 	// Create mock DB
 	db := setupTestDB(b)
 	queue := jobs.NewJobQueue(db, 2)
+
+	// Create test user
+	testUser := &models.UserDB{
+		ID:    "test-user",
+		Email: "test@example.com",
+		Role:  "creator",
+	}
+	require.NoError(b, db.Create(testUser).Error)
+
+	// Register dummy handlers
+	queue.RegisterHandler(jobs.JobTypeVideoProcessing, func(ctx context.Context, job *jobs.Job) error {
+		return nil
+	})
+
 	defer queue.Stop()
 
 	// Pre-populate with jobs
@@ -76,6 +139,23 @@ func BenchmarkJobQueue_GetUserJobs(b *testing.B) {
 	// Create mock DB
 	db := setupTestDB(b)
 	queue := jobs.NewJobQueue(db, 2)
+
+	// Create test users
+	for user := 0; user < 10; user++ {
+		userID := fmt.Sprintf("user-%d", user)
+		testUser := &models.UserDB{
+			ID:    userID,
+			Email: fmt.Sprintf("user%d@example.com", user),
+			Role:  "creator",
+		}
+		require.NoError(b, db.Create(testUser).Error)
+	}
+
+	// Register dummy handlers
+	queue.RegisterHandler(jobs.JobTypeVideoProcessing, func(ctx context.Context, job *jobs.Job) error {
+		return nil
+	})
+
 	defer queue.Stop()
 
 	// Pre-populate with jobs for multiple users
@@ -166,6 +246,20 @@ func TestJobQueueScalability(t *testing.T) {
 	// Create mock DB
 	db := setupTestDB(t)
 	queue := jobs.NewJobQueue(db, 2)
+
+	// Create test user
+	testUser := &models.UserDB{
+		ID:    "test-user",
+		Email: "test@example.com",
+		Role:  "creator",
+	}
+	require.NoError(t, db.Create(testUser).Error)
+
+	// Register dummy handlers
+	queue.RegisterHandler(jobs.JobTypeVideoProcessing, func(ctx context.Context, job *jobs.Job) error {
+		return nil
+	})
+
 	queue.Start()
 	defer queue.Stop()
 
@@ -225,6 +319,23 @@ func TestJobQueueConcurrency(t *testing.T) {
 	// Create mock DB
 	db := setupTestDB(t)
 	queue := jobs.NewJobQueue(db, 4)
+
+	// Create test users
+	for i := 0; i < 50; i++ {
+		userID := fmt.Sprintf("user-%d", i)
+		testUser := &models.UserDB{
+			ID:    userID,
+			Email: fmt.Sprintf("user%d@example.com", i),
+			Role:  "creator",
+		}
+		require.NoError(t, db.Create(testUser).Error)
+	}
+
+	// Register dummy handlers
+	queue.RegisterHandler(jobs.JobTypeVideoProcessing, func(ctx context.Context, job *jobs.Job) error {
+		return nil
+	})
+
 	queue.Start()
 	defer queue.Stop()
 
@@ -284,6 +395,20 @@ func TestJobQueueMemoryLeak(t *testing.T) {
 	// Create mock DB
 	db := setupTestDB(t)
 	queue := jobs.NewJobQueue(db, 2)
+
+	// Create test user
+	testUser := &models.UserDB{
+		ID:    "test-user",
+		Email: "test@example.com",
+		Role:  "creator",
+	}
+	require.NoError(t, db.Create(testUser).Error)
+
+	// Register dummy handlers
+	queue.RegisterHandler(jobs.JobTypeVideoProcessing, func(ctx context.Context, job *jobs.Job) error {
+		return nil
+	})
+
 	queue.Start()
 	defer queue.Stop()
 

@@ -238,7 +238,7 @@ func (cg *CourseGenerator) assembleCourse(course *models.Course, outputDir strin
 // createCourseIndex generates an HTML index file for the course
 func (cg *CourseGenerator) createCourseIndex(course *models.Course, outputDir string) error {
 	indexPath := filepath.Join(outputDir, "index.html")
-	
+
 	htmlContent := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -268,10 +268,10 @@ func (cg *CourseGenerator) createCourseIndex(course *models.Course, outputDir st
             </div>
         </div>
     </div>
-    
+
     <div class="lessons">
         <h2>Lessons</h2>
-`, course.Title, course.Description)
+`, course.Title, course.Title, course.Description)
 
 	for _, lesson := range course.Lessons {
 		htmlContent += fmt.Sprintf(`
@@ -323,13 +323,13 @@ func (cg *CourseGenerator) createCourseIndex(course *models.Course, outputDir st
 // createPlayerConfig creates configuration files for the video player
 func (cg *CourseGenerator) createPlayerConfig(course *models.Course, outputDir string) error {
 	configPath := filepath.Join(outputDir, "player-config.json")
-	
+
 	config := map[string]interface{}{
 		"courseId":     course.ID,
 		"title":        course.Title,
 		"description":  course.Description,
 		"totalLessons": len(course.Lessons),
-		"lessons": []map[string]interface{}{},
+		"lessons":      []map[string]interface{}{},
 		"settings": map[string]interface{}{
 			"autoplay":        true,
 			"showControls":    true,
@@ -337,20 +337,20 @@ func (cg *CourseGenerator) createPlayerConfig(course *models.Course, outputDir s
 			"theme":           "default",
 		},
 		"analytics": map[string]interface{}{
-			"enabled": true,
-			"trackProgress": true,
+			"enabled":        true,
+			"trackProgress":  true,
 			"trackTimeSpent": true,
 		},
 	}
 
 	for _, lesson := range course.Lessons {
 		lessonData := map[string]interface{}{
-			"id":          lesson.ID,
-			"title":       lesson.Title,
-			"order":       lesson.Order,
-			"duration":    lesson.Duration,
+			"id":       lesson.ID,
+			"title":    lesson.Title,
+			"order":    lesson.Order,
+			"duration": lesson.Duration,
 		}
-		
+
 		if lesson.VideoURL != nil {
 			lessonData["videoUrl"] = *lesson.VideoURL
 		}
@@ -360,11 +360,11 @@ func (cg *CourseGenerator) createPlayerConfig(course *models.Course, outputDir s
 		if lesson.Content != "" {
 			lessonData["content"] = lesson.Content
 		}
-		
+
 		if len(lesson.Diagrams) > 0 {
 			lessonData["diagrams"] = lesson.Diagrams
 		}
-		
+
 		config["lessons"] = append(config["lessons"].([]map[string]interface{}), lessonData)
 	}
 
@@ -379,7 +379,7 @@ func (cg *CourseGenerator) createPlayerConfig(course *models.Course, outputDir s
 // createCourseManifest creates a manifest file with course metadata
 func (cg *CourseGenerator) createCourseManifest(course *models.Course, outputDir string) error {
 	manifestPath := filepath.Join(outputDir, "course-manifest.json")
-	
+
 	manifest := map[string]interface{}{
 		"version":     "1.0",
 		"generatedAt": time.Now().Format(time.RFC3339),
@@ -391,11 +391,11 @@ func (cg *CourseGenerator) createCourseManifest(course *models.Course, outputDir
 			"updatedAt":   course.UpdatedAt.Format(time.RFC3339),
 		},
 		"assets": map[string]interface{}{
-			"totalLessons":     len(course.Lessons),
-			"hasVideo":         false,
-			"hasAudio":         false,
-			"hasDiagrams":      false,
-			"totalDuration":    "0:00:00",
+			"totalLessons":  len(course.Lessons),
+			"hasVideo":      false,
+			"hasAudio":      false,
+			"hasDiagrams":   false,
+			"totalDuration": "0:00:00",
 		},
 		"compatibility": map[string]interface{}{
 			"minPlayerVersion": "1.0.0",
@@ -415,14 +415,14 @@ func (cg *CourseGenerator) createCourseManifest(course *models.Course, outputDir
 		if len(lesson.Diagrams) > 0 {
 			manifest["assets"].(map[string]interface{})["hasDiagrams"] = true
 		}
-		
+
 		// Calculate total duration from lesson durations in seconds
 		var totalDurationSeconds int
 		for _, lesson := range course.Lessons {
 			if lesson.Duration > 0 {
 				totalDurationSeconds += lesson.Duration
 			}
-			
+
 			// Check for assets
 			if lesson.VideoURL != nil {
 				manifest["assets"].(map[string]interface{})["hasVideo"] = true
@@ -435,7 +435,7 @@ func (cg *CourseGenerator) createCourseManifest(course *models.Course, outputDir
 			}
 		}
 	}
-	
+
 	// Format total duration
 	hours := totalDurationSeconds / 3600
 	minutes := (totalDurationSeconds % 3600) / 60
@@ -453,7 +453,7 @@ func (cg *CourseGenerator) createCourseManifest(course *models.Course, outputDir
 // generatePackageMetadata creates metadata for the course package
 func (cg *CourseGenerator) generatePackageMetadata(course *models.Course, outputDir string) error {
 	metadataPath := filepath.Join(outputDir, "metadata.json")
-	
+
 	metadata := map[string]interface{}{
 		"packageType": "course",
 		"version":     "1.0.0",
@@ -463,7 +463,7 @@ func (cg *CourseGenerator) generatePackageMetadata(course *models.Course, output
 			"name":    "Course Creator",
 			"version": "1.0.0",
 		},
-		"course": course,
+		"course":    course,
 		"checksums": map[string]string{},
 	}
 
@@ -472,16 +472,16 @@ func (cg *CourseGenerator) generatePackageMetadata(course *models.Course, output
 		if err != nil {
 			return err
 		}
-		
+
 		if !info.IsDir() && path != metadataPath {
 			relPath, _ := filepath.Rel(outputDir, path)
 			hash := md5.Sum([]byte(path + info.ModTime().String())) // Simple checksum
 			metadata["checksums"].(map[string]string)[relPath] = fmt.Sprintf("%x", hash)
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to generate checksums: %w", err)
 	}
@@ -497,7 +497,7 @@ func (cg *CourseGenerator) generatePackageMetadata(course *models.Course, output
 // createCoursePackage creates a distributable package file
 func (cg *CourseGenerator) createCoursePackage(course *models.Course, outputDir string) error {
 	packagePath := filepath.Join(outputDir, fmt.Sprintf("%s.zip", course.ID))
-	
+
 	zipFile, err := os.Create(packagePath)
 	if err != nil {
 		return fmt.Errorf("failed to create package file: %w", err)
@@ -512,29 +512,29 @@ func (cg *CourseGenerator) createCoursePackage(course *models.Course, outputDir 
 		if err != nil {
 			return err
 		}
-		
+
 		if !info.IsDir() && filepath.Base(path) != fmt.Sprintf("%s.zip", course.ID) {
 			relPath, _ := filepath.Rel(outputDir, path)
-			
+
 			fileInZip, err := zipWriter.Create(relPath)
 			if err != nil {
 				return fmt.Errorf("failed to create file in zip: %w", err)
 			}
-			
+
 			fileContent, err := os.ReadFile(path)
 			if err != nil {
 				return fmt.Errorf("failed to read file for zip: %w", err)
 			}
-			
+
 			_, err = fileInZip.Write(fileContent)
 			if err != nil {
 				return fmt.Errorf("failed to write file to zip: %w", err)
 			}
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to walk directory for packaging: %w", err)
 	}

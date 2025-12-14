@@ -9,18 +9,23 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/course-creator/core-processor/utils"
 )
 
 // Pix2StructServer handles UI parsing using Pix2Struct (or similar vision models)
 type Pix2StructServer struct {
 	*BaseServerImpl
-	apiURL       string
-	apiKey       string
-	outputDir    string
-	maxImageSize int
-	timeout      time.Duration
+	apiURL                  string
+	apiKey                  string
+	outputDir               string
+	maxImageSize            int
+	timeout                 time.Duration
+	usePix2StructPython     bool
+	pix2StructPythonTimeout time.Duration
 }
 
 // Pix2StructRequest represents a Pix2Struct UI parsing request
@@ -60,12 +65,14 @@ func NewPix2StructServer() *Pix2StructServer {
 	}
 
 	server := &Pix2StructServer{
-		BaseServerImpl: NewBaseServer(config),
-		apiURL:         "https://api.openai.com/v1/chat/completions", // Using GPT-4 Vision for now
-		apiKey:         os.Getenv("OPENAI_API_KEY"),
-		outputDir:      "/tmp/pix2struct_output",
-		maxImageSize:   5 * 1024 * 1024, // 5MB
-		timeout:        60 * time.Second,
+		BaseServerImpl:          NewBaseServer(config),
+		apiURL:                  "https://api.openai.com/v1/chat/completions", // Using GPT-4 Vision for now
+		apiKey:                  os.Getenv("OPENAI_API_KEY"),
+		outputDir:               "/tmp/pix2struct_output",
+		maxImageSize:            5 * 1024 * 1024, // 5MB
+		timeout:                 60 * time.Second,
+		usePix2StructPython:     true,             // Enable Pix2Struct Python by default
+		pix2StructPythonTimeout: 45 * time.Second, // Timeout for Python execution
 	}
 
 	// Ensure output directory exists
@@ -107,7 +114,26 @@ func (s *Pix2StructServer) parseUI(args map[string]interface{}) (interface{}, er
 
 	fmt.Printf("Parsing UI with detail level: %s\n", detail)
 
-	// Use OpenAI GPT-4 Vision for UI parsing
+	// Try local Pix2Struct Python implementation first if enabled
+	if s.usePix2StructPython && s.isPix2StructPythonAvailable() {
+		fmt.Printf("Using Pix2Struct Python for UI parsing\n")
+		request := Pix2StructRequest{
+			Image:  image,
+			Prompt: prompt,
+			Detail: detail,
+			Settings: map[string]interface{}{
+				"task_type": "ui_parsing",
+			},
+		}
+		result, err := s.callPix2StructPython(request)
+		if err == nil {
+			return result, nil
+		}
+		fmt.Printf("Pix2Struct Python failed, falling back to OpenAI Vision: %v\n", err)
+	}
+
+	// Fallback to OpenAI GPT-4 Vision
+	fmt.Printf("Using OpenAI GPT-4 Vision for UI parsing\n")
 	return s.callOpenAIVisionForUI(image, prompt, detail)
 }
 
@@ -445,15 +471,187 @@ func (s *Pix2StructServer) extractForms(args map[string]interface{}) (interface{
 	}, nil
 }
 
+// isPix2StructPythonAvailable checks if Pix2Struct Python dependencies are available
+func (s *Pix2StructServer) isPix2StructPythonAvailable() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Test if Python and Pix2Struct/transformers library are available
+	cmd := utils.ExecuteCommand(ctx, "python3", "-c", "import transformers; import torch; print('Pix2Struct dependencies available')")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+
+	return strings.Contains(string(output), "Pix2Struct dependencies available")
+}
+
+// callPix2StructPython calls Pix2Struct Python implementation
+func (s *Pix2StructServer) callPix2StructPython(request Pix2StructRequest) (interface{}, error) {
+	// Generate Python script for Pix2Struct UI parsing
+	pythonScript := fmt.Sprintf(`
+import os
+import sys
+import base64
+import json
+import traceback
+from io import BytesIO
+from PIL import Image
+
+try:
+    import torch
+    from transformers import AutoProcessor, AutoModelForVision2Seq
+    from transformers import Pix2StructForConditionalGeneration, Pix2StructProcessor
+
+    # Load Pix2Struct model (using smaller model for efficiency)
+    model_id = "google/pix2struct-base"  # Can be configured via model_path
+
+    # Check if CUDA is available
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+
+    print(f"Loading Pix2Struct model on {device}...", file=sys.stderr)
+
+    # Load processor and model
+    processor = Pix2StructProcessor.from_pretrained(model_id)
+    model = Pix2StructForConditionalGeneration.from_pretrained(
+        model_id,
+        torch_dtype=torch_dtype,
+        device_map="auto",
+        low_cpu_mem_usage=True
+    )
+
+    def parse_ui(image_data, prompt, task_type="ui_parsing"):
+        # Decode base64 image
+        if "," in image_data:
+            image_data = image_data.split(",", 1)[1]
+
+        try:
+            image_bytes = base64.b64decode(image_data)
+            image = Image.open(BytesIO(image_bytes)).convert("RGB")
+
+            # Prepare inputs for Pix2Struct
+            inputs = processor(images=image, text=prompt, return_tensors="pt").to(device, torch_dtype)
+
+            # Generate response
+            with torch.no_grad():
+                generated_ids = model.generate(
+                    **inputs,
+                    max_new_tokens=512,
+                    do_sample=False,
+                    temperature=0.0,
+                    top_p=None,
+                    num_beams=1,
+                )
+
+            # Decode generated text
+            generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+
+            # Parse the generated text to extract UI elements
+            elements = []
+            text_content = []
+
+            # Simple parsing of Pix2Struct output
+            lines = generated_text.split('\n')
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+
+                # Look for UI element patterns
+                if any(keyword in line.lower() for keyword in ['button', 'input', 'text', 'field', 'link']):
+                    element_type = "unknown"
+                    if "button" in line.lower():
+                        element_type = "button"
+                    elif "input" in line.lower() or "field" in line.lower():
+                        element_type = "input"
+                    elif "text" in line.lower():
+                        element_type = "text"
+
+                    elements.append({
+                        "type": element_type,
+                        "text": line,
+                        "confidence": 0.85,
+                        "properties": {"detected": True}
+                    })
+                else:
+                    text_content.append(line)
+
+            return {
+                "structure": {
+                    "description": generated_text,
+                    "detail": "high"
+                },
+                "text": text_content,
+                "elements": elements,
+                "model": "pix2struct-base",
+                "device": device
+            }
+
+        except Exception as e:
+            return {"error": f"UI parsing failed: {str(e)}"}
+
+    # Parse request from Go
+    request_json = '''%s'''
+    request = json.loads(request_json)
+
+    # Parse UI
+    result = parse_ui(request["image"], request["prompt"], "%s")
+
+    # Output result as JSON
+    print(json.dumps(result))
+
+except ImportError as e:
+    print(json.dumps({"error": f"Missing dependencies: {str(e)}. Install with: pip install transformers torch pillow"}))
+except Exception as e:
+    print(json.dumps({"error": f"Pix2Struct execution failed: {str(e)}"}), file=sys.stderr)
+    traceback.print_exc()
+`,
+		func() string {
+			data, _ := json.Marshal(request)
+			return string(data)
+		}(),
+		request.Settings["task_type"].(string),
+	)
+
+	// Write script to temporary file
+	scriptPath := filepath.Join(s.outputDir, fmt.Sprintf("pix2struct_script_%d.py", utils.HashString(request.Image+request.Prompt)))
+	if err := os.WriteFile(scriptPath, []byte(pythonScript), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write Python script: %w", err)
+	}
+	defer os.Remove(scriptPath)
+
+	// Execute Python script with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), s.pix2StructPythonTimeout)
+	defer cancel()
+
+	cmd := utils.ExecuteCommand(ctx, "python3", scriptPath)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("Pix2Struct Python execution failed: %w, output: %s", err, string(output))
+	}
+
+	// Parse JSON output
+	var result interface{}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(string(output))), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse Pix2Struct Python output: %w, output: %s", err, string(output))
+	}
+
+	return result, nil
+}
+
 // getInfo returns Pix2Struct server information
 func (s *Pix2StructServer) getInfo(args map[string]interface{}) (interface{}, error) {
 	return map[string]interface{}{
-		"name":           "Pix2Struct UI Parser",
-		"version":        "1.0.0",
-		"api_url":        s.apiURL,
-		"output_dir":     s.outputDir,
-		"max_image_size": s.maxImageSize,
-		"timeout":        s.timeout.String(),
-		"model":          "gpt-4-vision-preview",
+		"name":                        "Pix2Struct UI Parser",
+		"version":                     "1.0.0",
+		"api_url":                     s.apiURL,
+		"output_dir":                  s.outputDir,
+		"max_image_size":              s.maxImageSize,
+		"timeout":                     s.timeout.String(),
+		"pix2struct_python_enabled":   s.usePix2StructPython,
+		"pix2struct_python_available": s.isPix2StructPythonAvailable(),
+		"pix2struct_python_timeout":   s.pix2StructPythonTimeout.String(),
+		"model":                       "gpt-4-vision-preview",
 	}, nil
 }

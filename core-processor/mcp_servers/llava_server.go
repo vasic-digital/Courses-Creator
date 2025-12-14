@@ -19,11 +19,13 @@ import (
 // LLaVAServer handles image analysis using LLaVA (Large Language and Vision Assistant)
 type LLaVAServer struct {
 	*BaseServerImpl
-	llavaURL      string
-	modelPath     string
-	outputDir     string
-	maxImageSize  int
-	contextWindow int
+	llavaURL           string
+	modelPath          string
+	outputDir          string
+	maxImageSize       int
+	contextWindow      int
+	useLLaVAPython     bool
+	llavaPythonTimeout time.Duration
 }
 
 // LLaVARequest represents a LLaVA image analysis request
@@ -66,12 +68,14 @@ func NewLLaVAServer() *LLaVAServer {
 	}
 
 	server := &LLaVAServer{
-		BaseServerImpl: NewBaseServer(config),
-		llavaURL:       "http://localhost:8767/analyze", // Default LLaVA server URL
-		modelPath:      "/models/llava",
-		outputDir:      "/tmp/llava_output",
-		maxImageSize:   5 * 1024 * 1024, // 5MB
-		contextWindow:  2048,
+		BaseServerImpl:     NewBaseServer(config),
+		llavaURL:           "http://localhost:8767/analyze", // Default LLaVA server URL
+		modelPath:          "/models/llava",
+		outputDir:          "/tmp/llava_output",
+		maxImageSize:       5 * 1024 * 1024, // 5MB
+		contextWindow:      2048,
+		useLLaVAPython:     true,             // Enable LLaVA Python by default
+		llavaPythonTimeout: 60 * time.Second, // Timeout for Python execution
 	}
 
 	// Ensure output directory exists
@@ -159,7 +163,18 @@ func (s *LLaVAServer) analyzeImage(args map[string]interface{}) (interface{}, er
 		},
 	}
 
-	// Use OpenAI GPT-4 Vision as primary implementation
+	// Try local LLaVA Python implementation first if enabled
+	if s.useLLaVAPython && s.isLLaVAPythonAvailable() {
+		fmt.Printf("Using LLaVA Python for image analysis\n")
+		result, err := s.callLLaVAPython(request)
+		if err == nil {
+			return result, nil
+		}
+		fmt.Printf("LLaVA Python failed, falling back to OpenAI Vision: %v\n", err)
+	}
+
+	// Fallback to OpenAI GPT-4 Vision
+	fmt.Printf("Using OpenAI GPT-4 Vision for image analysis\n")
 	return s.callOpenAIVision(request)
 }
 
@@ -512,6 +527,21 @@ func (s *LLaVAServer) isLLaVAServerRunning() bool {
 	return resp.StatusCode == 200
 }
 
+// isLLaVAPythonAvailable checks if LLaVA Python dependencies are available
+func (s *LLaVAServer) isLLaVAPythonAvailable() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Test if Python and LLaVA library are available
+	cmd := utils.ExecuteCommand(ctx, "python3", "-c", "import transformers; import torch; print('LLaVA dependencies available')")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+
+	return strings.Contains(string(output), "LLaVA dependencies available")
+}
+
 // callLLaVAServer calls the local LLaVA server
 func (s *LLaVAServer) callLLaVAServer(request LLaVARequest) (interface{}, error) {
 	jsonData, err := json.Marshal(request)
@@ -557,84 +587,120 @@ func (s *LLaVAServer) callLLaVAServer(request LLaVARequest) (interface{}, error)
 
 // callLLaVAPython calls LLaVA Python implementation
 func (s *LLaVAServer) callLLaVAPython(request LLaVARequest) (interface{}, error) {
-	// Generate Python script for LLaVA (mock implementation)
 	taskType, _ := request.Settings["task_type"].(string)
 	if taskType == "" {
 		taskType = "general"
 	}
 
+	// Generate Python script for LLaVA
 	pythonScript := fmt.Sprintf(`
 import os
 import sys
 import base64
 import json
+import traceback
 from io import BytesIO
 from PIL import Image
 
-# Mock LLaVA implementation for demonstration
-def analyze_image(image_data, prompt, task_type="general"):
-    # Decode base64 image
-    if "," in image_data:
-        image_data = image_data.split(",", 1)[1]
-    
-    try:
-        image_bytes = base64.b64decode(image_data)
-        image = Image.open(BytesIO(image_bytes))
-        
-        # Basic image analysis
-        width, height = image.size
-        mode = image.mode
-        
-        if task_type == "ocr":
-            # Mock OCR - in real implementation, would use Tesseract or similar
-            return {
-                "text": ["Sample text extracted from image", "Another line of text"],
-                "confidence": 0.85,
-                "language": "en"
-            }
-        elif task_type == "object_detection":
-            # Mock object detection
-            return {
-                "objects": [
-                    {"name": "person", "confidence": 0.92, "bbox": [100, 150, 300, 450]},
-                    {"name": "car", "confidence": 0.87, "bbox": [350, 200, 550, 400]},
-                    {"name": "tree", "confidence": 0.75, "bbox": [50, 100, 150, 350]}
-                ]
-            }
-        elif task_type == "color_analysis":
-            # Mock color analysis
-            return {
-                "dominant_colors": [
-                    {"hex": "#3B82F6", "name": "Blue", "proportion": 0.35},
-                    {"hex": "#10B981", "name": "Green", "proportion": 0.25},
-                    {"hex": "#F59E0B", "name": "Amber", "proportion": 0.20},
-                    {"hex": "#EF4444", "name": "Red", "proportion": 0.15},
-                    {"hex": "#8B5CF6", "name": "Purple", "proportion": 0.05}
-                ],
-                "scheme": "vibrant",
-                "mood": "energetic"
-            }
-        else:
-            # General image analysis
-            return {
-                "description": "This image contains various elements with rich colors and interesting composition. The overall style appears to be modern and well-balanced.",
-                "objects": ["person", "building", "sky", "tree"],
-                "style": "photorealistic",
-                "mood": "neutral",
-                "composition": "balanced"
-            }
-    except Exception as e:
-        return {"error": str(e)}
+try:
+    import torch
+    from transformers import LlavaNextProcessor, LlavaNextForConditionalGeneration
+    from transformers import AutoProcessor, AutoModelForCausalLM
 
-# Parse request
-request_json = '''%s'''
-request = json.loads(request_json)
+    # Load LLaVA model (using smaller model for efficiency)
+    model_id = "llava-hf/llava-1.5-7b-hf"  # Can be configured via model_path
 
-# Analyze image
-result = analyze_image(request["image"], request["prompt"], "%s")
+    # Check if CUDA is available
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
-# Output result as JSON
-print(json.dumps(result))
+    print(f"Loading LLaVA model on {device}...", file=sys.stderr)
+
+    # Load processor and model
+    processor = AutoProcessor.from_pretrained(model_id)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_id,
+        torch_dtype=torch_dtype,
+        device_map="auto",
+        low_cpu_mem_usage=True
+    )
+
+    def analyze_image(image_data, prompt, task_type="general"):
+        # Decode base64 image
+        if "," in image_data:
+            image_data = image_data.split(",", 1)[1]
+
+        try:
+            image_bytes = base64.b64decode(image_data)
+            image = Image.open(BytesIO(image_bytes)).convert("RGB")
+
+            # Prepare conversation
+            conversation = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image"},
+                    ],
+                },
+            ]
+
+            # Apply chat template
+            prompt_text = processor.apply_chat_template(conversation, add_generation_prompt=True)
+
+            # Process inputs
+            inputs = processor(image, prompt_text, return_tensors="pt").to(device, torch_dtype)
+
+            # Generate response
+            with torch.no_grad():
+                output = model.generate(
+                    **inputs,
+                    max_new_tokens=200,
+                    do_sample=False,
+                    temperature=0.0,
+                    top_p=None,
+                    num_beams=1,
+                )
+
+            # Decode response
+            response = processor.decode(output[0][len(inputs["input_ids"][0]):], skip_special_tokens=True)
+
+            # Extract objects and metadata from response
+            objects = []
+            # Simple object extraction from response
+            response_lower = response.lower()
+            common_objects = ["person", "people", "man", "woman", "child", "car", "truck", "bus", "bike",
+                            "dog", "cat", "bird", "horse", "table", "chair", "book", "computer", "building", "house"]
+            for obj in common_objects:
+                if obj in response_lower:
+                    objects.append(obj)
+
+            return {
+                "description": response.strip(),
+                "objects": objects,
+                "confidence": 0.9,
+                "model": "llava-1.5-7b-hf",
+                "device": device
+            }
+
+        except Exception as e:
+            return {"error": f"Image processing failed: {str(e)}"}
+
+    # Parse request from Go
+    request_json = '''%s'''
+    request = json.loads(request_json)
+
+    # Analyze image
+    result = analyze_image(request["image"], request["prompt"], "%s")
+
+    # Output result as JSON
+    print(json.dumps(result))
+
+except ImportError as e:
+    print(json.dumps({"error": f"Missing dependencies: {str(e)}. Install with: pip install transformers torch pillow"}))
+except Exception as e:
+    print(json.dumps({"error": f"LLaVA execution failed: {str(e)}"}), file=sys.stderr)
+    traceback.print_exc()
 `,
 		func() string {
 			data, _ := json.Marshal(request)
@@ -650,20 +716,20 @@ print(json.dumps(result))
 	}
 	defer os.Remove(scriptPath)
 
-	// Execute Python script
-	ctx, cancel := context.WithTimeout(context.Background(), s.Config.Timeout)
+	// Execute Python script with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), s.llavaPythonTimeout)
 	defer cancel()
 
 	cmd := utils.ExecuteCommand(ctx, "python3", scriptPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("Python execution failed: %w, output: %s", err, string(output))
+		return nil, fmt.Errorf("LLaVA Python execution failed: %w, output: %s", err, string(output))
 	}
 
 	// Parse JSON output
 	var result interface{}
 	if err := json.Unmarshal([]byte(strings.TrimSpace(string(output))), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse Python output: %w, output: %s", err, string(output))
+		return nil, fmt.Errorf("failed to parse LLaVA Python output: %w, output: %s", err, string(output))
 	}
 
 	return result, nil
@@ -672,13 +738,16 @@ print(json.dumps(result))
 // getInfo returns LLaVA server information
 func (s *LLaVAServer) getInfo(args map[string]interface{}) (interface{}, error) {
 	return map[string]interface{}{
-		"name":           "LLaVA Image Analysis Server",
-		"version":        "1.0.0",
-		"server_url":     s.llavaURL,
-		"model_path":     s.modelPath,
-		"max_image_size": s.maxImageSize,
-		"context_window": s.contextWindow,
-		"output_dir":     s.outputDir,
-		"server_running": s.isLLaVAServerRunning(),
+		"name":                   "LLaVA Image Analysis Server",
+		"version":                "1.0.0",
+		"server_url":             s.llavaURL,
+		"model_path":             s.modelPath,
+		"max_image_size":         s.maxImageSize,
+		"context_window":         s.contextWindow,
+		"output_dir":             s.outputDir,
+		"server_running":         s.isLLaVAServerRunning(),
+		"llava_python_enabled":   s.useLLaVAPython,
+		"llava_python_available": s.isLLaVAPythonAvailable(),
+		"llava_python_timeout":   s.llavaPythonTimeout.String(),
 	}, nil
 }
