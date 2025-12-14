@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/course-creator/core-processor/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

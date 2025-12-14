@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -641,6 +642,30 @@ func TestCSRFService(t *testing.T) {
 	t.Run("invalid token", func(t *testing.T) {
 		assert.False(t, csrf.ValidateToken("invalid-token", "test-session"))
 	})
+
+	t.Run("wrong session ID", func(t *testing.T) {
+		sessionID := "session-1"
+		token := csrf.GenerateToken(sessionID)
+		assert.False(t, csrf.ValidateToken(token, "session-2"))
+	})
+
+	t.Run("empty token", func(t *testing.T) {
+		assert.False(t, csrf.ValidateToken("", "test-session"))
+	})
+
+	t.Run("empty session ID", func(t *testing.T) {
+		sessionID := "session-1"
+		token := csrf.GenerateToken(sessionID)
+		assert.False(t, csrf.ValidateToken(token, ""))
+	})
+
+	t.Run("malformed token", func(t *testing.T) {
+		assert.False(t, csrf.ValidateToken("not.a.valid.token", "test-session"))
+	})
+
+	t.Run("token for non-existent session", func(t *testing.T) {
+		assert.False(t, csrf.ValidateToken("some-token", "non-existent-session"))
+	})
 }
 
 func TestValidateFileUpload(t *testing.T) {
@@ -685,6 +710,69 @@ func TestValidateFileUpload(t *testing.T) {
 			},
 			expected: false,
 		},
+		{
+			name: "content type mismatch - allowed",
+			file: models.UploadFile{
+				Filename:    "image.jpg",
+				ContentType: "application/octet-stream",
+				Content:     []byte("fake jpg content"),
+			},
+			expected: true,
+		},
+		{
+			name: "content type mismatch - not allowed",
+			file: models.UploadFile{
+				Filename:    "document.pdf",
+				ContentType: "application/octet-stream",
+				Content:     []byte("fake pdf content"),
+			},
+			expected: false,
+		},
+		{
+			name: "executable header detection - MZ",
+			file: models.UploadFile{
+				Filename:    "fake.txt",
+				ContentType: "text/plain",
+				Content:     []byte("MZ" + strings.Repeat("x", 100)),
+			},
+			expected: false,
+		},
+		{
+			name: "executable header detection - ELF",
+			file: models.UploadFile{
+				Filename:    "fake.bin",
+				ContentType: "application/octet-stream",
+				Content:     []byte("\x7fELF" + strings.Repeat("x", 100)),
+			},
+			expected: false,
+		},
+		{
+			name: "script content in text file",
+			file: models.UploadFile{
+				Filename:    "document.txt",
+				ContentType: "text/plain",
+				Content:     []byte("Normal text <script>alert('xss')</script> more text"),
+			},
+			expected: false,
+		},
+		{
+			name: "script content in js file (blocked by extension)",
+			file: models.UploadFile{
+				Filename:    "script.js",
+				ContentType: "application/javascript",
+				Content:     []byte("function test() { alert('hello'); }"),
+			},
+			expected: false, // .js files are in dangerous extensions list
+		},
+		{
+			name: "not an UploadFile type",
+			file: models.UploadFile{
+				Filename:    "test.txt",
+				ContentType: "text/plain",
+				Content:     []byte("content"),
+			},
+			expected: true, // Will be tested separately with interface{}
+		},
 	}
 
 	for _, tt := range tests {
@@ -693,6 +781,12 @@ func TestValidateFileUpload(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+
+	// Test with non-UploadFile type
+	t.Run("not an UploadFile type", func(t *testing.T) {
+		result := ValidateFileUpload("not a file")
+		assert.False(t, result)
+	})
 }
 
 func TestValidateInputField(t *testing.T) {
@@ -742,6 +836,60 @@ func TestValidateInputField(t *testing.T) {
 			name:     "invalid email",
 			field:    "email",
 			value:    "invalid-email",
+			expected: false,
+		},
+		{
+			name:     "valid jobId",
+			field:    "jobId",
+			value:    "job-123-abc",
+			expected: true,
+		},
+		{
+			name:     "invalid jobId with special chars",
+			field:    "jobId",
+			value:    "job@123",
+			expected: false,
+		},
+		{
+			name:     "jobId with path traversal",
+			field:    "jobId",
+			value:    "../etc/passwd",
+			expected: false,
+		},
+		{
+			name:     "default field - valid",
+			field:    "description",
+			value:    "A normal description",
+			expected: true,
+		},
+		{
+			name:     "default field - with script injection",
+			field:    "description",
+			value:    "Description <script>alert('xss')</script>",
+			expected: false,
+		},
+		{
+			name:     "default field - with SQL injection",
+			field:    "description",
+			value:    "Description; DROP TABLE users;",
+			expected: false,
+		},
+		{
+			name:     "default field - with path traversal",
+			field:    "description",
+			value:    "Description ../../etc/passwd",
+			expected: false,
+		},
+		{
+			name:     "title too long",
+			field:    "title",
+			value:    strings.Repeat("a", 201),
+			expected: false,
+		},
+		{
+			name:     "title with only spaces",
+			field:    "title",
+			value:    "   ",
 			expected: false,
 		},
 	}

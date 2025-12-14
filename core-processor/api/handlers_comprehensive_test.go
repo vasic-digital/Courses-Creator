@@ -23,7 +23,12 @@ import (
 func TestGenerateCourse(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	db, err := database.NewDatabase(database.DefaultConfig())
+	tempDir := t.TempDir()
+	db, err := database.NewDatabase(&database.Config{
+		Path:  filepath.Join(tempDir, "test.db"),
+		Debug: false,
+		Env:   "test",
+	})
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -82,7 +87,8 @@ func TestGenerateCourse(t *testing.T) {
 				"options": map[string]interface{}{
 					"quality":          "high",
 					"voice":            "en-US-Wavenet-A",
-					"background_music": "calm",
+					"background_music": true,
+					"background_style": "calm",
 					"languages":        []string{"en", "es"},
 				},
 			},
@@ -127,7 +133,12 @@ func TestGenerateCourse(t *testing.T) {
 func TestGetCourse_NotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	db, err := database.NewDatabase(database.DefaultConfig())
+	tempDir := t.TempDir()
+	db, err := database.NewDatabase(&database.Config{
+		Path:  filepath.Join(tempDir, "test.db"),
+		Debug: false,
+		Env:   "test",
+	})
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -381,15 +392,8 @@ func TestGenerateCourse_OptionsSerializationError(t *testing.T) {
 
 	handler := NewCourseHandler(db)
 
-	requestBody := map[string]interface{}{
-		"markdown_path": "/tmp/test.md",
-		"options": map[string]interface{}{
-			"quality": func() {}, // Function cannot be serialized to JSON
-		},
-	}
-
-	body, err := json.Marshal(requestBody)
-	require.NoError(t, err)
+	// Create malformed JSON that cannot be parsed
+	body := []byte(`{"markdown_path": "/tmp/test.md", "options": {"quality": function() {}}}`)
 
 	req, err := http.NewRequest("POST", "/api/courses/generate", bytes.NewBuffer(body))
 	require.NoError(t, err)
@@ -402,6 +406,11 @@ func TestGenerateCourse_OptionsSerializationError(t *testing.T) {
 	handler.GenerateCourse(c)
 
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
+
+	var response map[string]string
+	err = json.Unmarshal(rr.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Contains(t, response["error"], "invalid character")
 }
 
 func TestProcessCourseAsync_Integration(t *testing.T) {
