@@ -2,7 +2,6 @@ package pipeline
 
 import (
 	"context"
-	"io"
 	"os"
 	"testing"
 	"time"
@@ -135,49 +134,10 @@ func TestPipelineFactory_GetLLMManager(t *testing.T) {
 	assert.NotNil(t, manager)
 }
 
-// MockStorage implements storage.StorageInterface for testing
-type MockStorage struct{}
-
-func (m *MockStorage) Save(path string, data []byte) error {
-	return nil
-}
-
-func (m *MockStorage) SaveReader(path string, reader io.Reader) error {
-	return nil
-}
-
-func (m *MockStorage) Load(path string) ([]byte, error) {
-	return []byte("mock data"), nil
-}
-
-func (m *MockStorage) Delete(path string) error {
-	return nil
-}
-
-func (m *MockStorage) Exists(path string) bool {
-	return true
-}
-
-func (m *MockStorage) List(dir string) ([]string, error) {
-	return []string{"file1.jpg", "file2.jpg"}, nil
-}
-
-func (m *MockStorage) CreateDir(path string) error {
-	return nil
-}
-
-func (m *MockStorage) GetURL(path string) string {
-	return "http://localhost:8080/storage/" + path
-}
-
-func (m *MockStorage) GetSize(path string) (int64, error) {
-	return 1024, nil
-}
-
 // BackgroundGenerator tests
 
 func TestNewBackgroundGenerator(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	generator := NewBackgroundGenerator(storage)
 
 	assert.NotNil(t, generator)
@@ -198,7 +158,7 @@ func TestNewBackgroundGeneratorWithConfig(t *testing.T) {
 		MaxRetries: 3,
 	}
 
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	generator := NewBackgroundGeneratorWithConfig(config, storage)
 
 	assert.NotNil(t, generator)
@@ -211,7 +171,7 @@ func TestNewBackgroundGeneratorWithConfig(t *testing.T) {
 // DiagramProcessor tests
 
 func TestNewDiagramProcessor(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	processor := NewDiagramProcessor(storage)
 
 	assert.NotNil(t, processor)
@@ -231,7 +191,7 @@ func TestNewDiagramProcessorWithConfig(t *testing.T) {
 		MaxRetries: 3,
 	}
 
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	processor := NewDiagramProcessorWithConfig(config, storage)
 
 	assert.NotNil(t, processor)
@@ -241,7 +201,7 @@ func TestNewDiagramProcessorWithConfig(t *testing.T) {
 }
 
 func TestDiagramProcessor_ProcessDiagrams_EmptyContent(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	processor := NewDiagramProcessor(storage)
 
 	ctx := context.Background()
@@ -298,7 +258,7 @@ func TestTTSProcessor_GenerateAudio_EmptyText(t *testing.T) {
 // VideoAssembler tests
 
 func TestNewVideoAssembler(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	assembler := NewVideoAssembler(storage)
 
 	assert.NotNil(t, assembler)
@@ -324,7 +284,7 @@ func TestNewVideoAssemblerWithConfig(t *testing.T) {
 		MaxRetries:  3,
 	}
 
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	assembler := NewVideoAssemblerWithConfig(config, storage)
 
 	assert.NotNil(t, assembler)
@@ -336,7 +296,7 @@ func TestNewVideoAssemblerWithConfig(t *testing.T) {
 // BackgroundGenerator functional tests
 
 func TestBackgroundGenerator_GenerateBackground(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	generator := NewBackgroundGenerator(storage)
 
 	ctx := context.Background()
@@ -357,7 +317,7 @@ func TestBackgroundGenerator_GenerateBackground(t *testing.T) {
 }
 
 func TestBackgroundGenerator_GenerateBackground_DifferentContent(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	generator := NewBackgroundGenerator(storage)
 
 	ctx := context.Background()
@@ -396,7 +356,7 @@ func TestBackgroundGenerator_GenerateBackground_DifferentContent(t *testing.T) {
 }
 
 func TestBackgroundGenerator_SelectPalette(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	generator := NewBackgroundGenerator(storage)
 
 	tests := []struct {
@@ -446,7 +406,7 @@ func TestBackgroundGenerator_SelectPalette(t *testing.T) {
 }
 
 func TestBackgroundGenerator_SelectPattern(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	generator := NewBackgroundGenerator(storage)
 
 	tests := []struct {
@@ -477,7 +437,7 @@ func TestBackgroundGenerator_SelectPattern(t *testing.T) {
 // DiagramProcessor functional tests
 
 func TestDiagramProcessor_ProcessDiagrams_WithMermaidContent(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	processor := NewDiagramProcessor(storage)
 
 	ctx := context.Background()
@@ -508,7 +468,7 @@ This flowchart shows the debugging process.
 }
 
 func TestDiagramProcessor_ProcessDiagrams_WithMultipleDiagrams(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	processor := NewDiagramProcessor(storage)
 
 	ctx := context.Background()
@@ -550,7 +510,7 @@ sequenceDiagram
 }
 
 func TestDiagramProcessor_DetectDiagrams(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	processor := NewDiagramProcessor(storage)
 
 	content := `
@@ -581,7 +541,7 @@ sequenceDiagram
 }
 
 func TestDiagramProcessor_InferDiagramType(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	processor := NewDiagramProcessor(storage)
 
 	tests := []struct {
@@ -630,7 +590,7 @@ func TestDiagramProcessor_InferDiagramType(t *testing.T) {
 }
 
 func TestDiagramProcessor_CountElements(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	processor := NewDiagramProcessor(storage)
 
 	tests := []struct {
@@ -810,7 +770,7 @@ func TestTTSProcessor_IsRunning(t *testing.T) {
 // VideoAssembler functional tests
 
 func TestVideoAssembler_ParseTextSegments(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	assembler := NewVideoAssembler(storage)
 
 	textContent := "First sentence. Second sentence! Third sentence?"
@@ -836,7 +796,7 @@ func TestVideoAssembler_ParseTextSegments(t *testing.T) {
 }
 
 func TestVideoAssembler_ParseTextSegments_EmptyText(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	assembler := NewVideoAssembler(storage)
 
 	segments := assembler.ParseTextSegments("", 10.0)
@@ -846,7 +806,7 @@ func TestVideoAssembler_ParseTextSegments_EmptyText(t *testing.T) {
 }
 
 func TestVideoAssembler_ParseTextSegments_LongText(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	assembler := NewVideoAssembler(storage)
 
 	longText := `This is a very long text that should be split into multiple segments.
@@ -869,7 +829,7 @@ This ensures that the text appears at appropriate times during the video playbac
 }
 
 func TestVideoAssembler_EscapeFFmpegText(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	assembler := NewVideoAssembler(storage)
 
 	tests := []struct {
@@ -908,7 +868,7 @@ func TestVideoAssembler_EscapeFFmpegText(t *testing.T) {
 }
 
 func TestVideoAssembler_FormatSRTTime(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	assembler := NewVideoAssembler(storage)
 
 	tests := []struct {
@@ -952,7 +912,7 @@ func TestVideoAssembler_FormatSRTTime(t *testing.T) {
 }
 
 func TestVideoAssembler_CreateSRTSubtitleFile(t *testing.T) {
-	storage := &MockStorage{}
+	storage := NewMockFileStorage()
 	assembler := NewVideoAssembler(storage)
 
 	subtitles := []models.Subtitle{
