@@ -98,3 +98,81 @@ func TestSetupRouter_CustomHeaders(t *testing.T) {
 	assert.Equal(t, "test-value", w.Header().Get("Custom-Header"))
 	assert.Contains(t, w.Body.String(), "custom")
 }
+
+func TestSetupRouter_CORSHeaders(t *testing.T) {
+	router := SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("OPTIONS", "/", nil)
+	router.ServeHTTP(w, req)
+
+	// Even for non-CORS requests, security headers should be present
+	assert.Equal(t, "nosniff", w.Header().Get("X-Content-Type-Options"))
+	assert.Equal(t, "DENY", w.Header().Get("X-Frame-Options"))
+}
+
+func TestSetupRouter_InvalidRoute(t *testing.T) {
+	router := SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/nonexistent", nil)
+	router.ServeHTTP(w, req)
+
+	// Should return 404 for non-existent routes
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestGenerateCourse_InputValidation(t *testing.T) {
+	// Test with empty markdown file path
+	assert.NotPanics(t, func() {
+		GenerateCourse("", "/tmp/output")
+	})
+
+	// Test with empty output directory
+	assert.NotPanics(t, func() {
+		GenerateCourse("test.md", "")
+	})
+
+	// Test with both empty
+	assert.NotPanics(t, func() {
+		GenerateCourse("", "")
+	})
+}
+
+func TestSetupRouter_MultipleRequests(t *testing.T) {
+	router := SetupRouter()
+
+	// Test multiple concurrent requests
+	done := make(chan bool, 2)
+
+	go func() {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/", nil)
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+		done <- true
+	}()
+
+	go func() {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/", nil)
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+		done <- true
+	}()
+
+	// Wait for both requests to complete
+	<-done
+	<-done
+}
+
+func TestSetupRouter_ContentType(t *testing.T) {
+	router := SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/", nil)
+	router.ServeHTTP(w, req)
+
+	// Check that content type is set to JSON
+	assert.Contains(t, w.Header().Get("Content-Type"), "application/json")
+}
