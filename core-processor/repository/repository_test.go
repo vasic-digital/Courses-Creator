@@ -504,3 +504,427 @@ func TestSerializeJobOptions(t *testing.T) {
 	assert.Equal(t, options.Languages, parsed.Languages)
 	assert.Equal(t, options.Quality, parsed.Quality)
 }
+
+func TestCourseRepository_CreateCourse(t *testing.T) {
+	db := setupTestDB(t)
+	repo := NewCourseRepository(db)
+
+	course := &models.Course{
+		ID:          "test-course-1",
+		Title:       "Test Course",
+		Description: "A test course description",
+		Metadata: models.CourseMetadata{
+			Author:        "Test Author",
+			Language:      "en",
+			Tags:          []string{"test", "golang"},
+			ThumbnailURL:  stringPtr("https://example.com/thumb.jpg"),
+			TotalDuration: 3600,
+		},
+		Lessons: []models.Lesson{
+			{
+				ID:       "lesson-1",
+				Title:    "Introduction",
+				Content:  "Welcome to the course",
+				VideoURL: stringPtr("https://example.com/video1.mp4"),
+				AudioURL: stringPtr("https://example.com/audio1.mp3"),
+				Duration: 600,
+				Order:    1,
+				Subtitles: []models.Subtitle{
+					{
+						Language: "en",
+						Content:  "Welcome to the course",
+						Timestamps: []map[string]interface{}{
+							{"start": 0.0, "end": 5.0, "text": "Welcome"},
+						},
+					},
+				},
+				InteractiveElements: []models.InteractiveElement{
+					{
+						ID:       "element-1",
+						Type:     "quiz",
+						Content:  `{"question": "What is Go?", "options": ["Language", "Food"], "answer": 0}`,
+						Position: 300,
+					},
+				},
+			},
+		},
+	}
+
+	result, err := repo.CreateCourse(course)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, course.ID, result.ID)
+	assert.Equal(t, course.Title, result.Title)
+	assert.Equal(t, course.Description, result.Description)
+	assert.NotZero(t, result.CreatedAt)
+	assert.NotZero(t, result.UpdatedAt)
+
+	// Verify metadata was created
+	assert.Equal(t, course.Metadata.Author, result.Metadata.Author)
+	assert.Equal(t, course.Metadata.Language, result.Metadata.Language)
+	assert.Equal(t, course.Metadata.ThumbnailURL, result.Metadata.ThumbnailURL)
+	assert.Equal(t, course.Metadata.TotalDuration, result.Metadata.TotalDuration)
+
+	// Verify lessons were created
+	assert.Len(t, result.Lessons, 1)
+	assert.Equal(t, course.Lessons[0].ID, result.Lessons[0].ID)
+	assert.Equal(t, course.Lessons[0].Title, result.Lessons[0].Title)
+	assert.Equal(t, course.Lessons[0].Content, result.Lessons[0].Content)
+	assert.Equal(t, course.Lessons[0].VideoURL, result.Lessons[0].VideoURL)
+	assert.Equal(t, course.Lessons[0].AudioURL, result.Lessons[0].AudioURL)
+	assert.Equal(t, course.Lessons[0].Duration, result.Lessons[0].Duration)
+	assert.Equal(t, course.Lessons[0].Order, result.Lessons[0].Order)
+
+	// Verify subtitles were created
+	assert.Len(t, result.Lessons[0].Subtitles, 1)
+	assert.Equal(t, course.Lessons[0].Subtitles[0].Language, result.Lessons[0].Subtitles[0].Language)
+	assert.Equal(t, course.Lessons[0].Subtitles[0].Content, result.Lessons[0].Subtitles[0].Content)
+
+	// Verify interactive elements were created
+	assert.Len(t, result.Lessons[0].InteractiveElements, 1)
+	assert.Equal(t, course.Lessons[0].InteractiveElements[0].ID, result.Lessons[0].InteractiveElements[0].ID)
+	assert.Equal(t, course.Lessons[0].InteractiveElements[0].Type, result.Lessons[0].InteractiveElements[0].Type)
+	assert.Equal(t, course.Lessons[0].InteractiveElements[0].Content, result.Lessons[0].InteractiveElements[0].Content)
+	assert.Equal(t, course.Lessons[0].InteractiveElements[0].Position, result.Lessons[0].InteractiveElements[0].Position)
+}
+
+func TestCourseRepository_GetCourseByID(t *testing.T) {
+	db := setupTestDB(t)
+	repo := NewCourseRepository(db)
+
+	// Create a course first
+	course := &models.Course{
+		ID:          "get-test-course",
+		Title:       "Get Test Course",
+		Description: "Course for get testing",
+		Metadata: models.CourseMetadata{
+			Author:   "Test Author",
+			Language: "en",
+		},
+		Lessons: []models.Lesson{
+			{
+				ID:      "get-lesson-1",
+				Title:   "Lesson 1",
+				Content: "Content 1",
+				Order:   1,
+			},
+		},
+	}
+
+	created, err := repo.CreateCourse(course)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		courseID    string
+		expectError bool
+	}{
+		{
+			name:        "successful course retrieval",
+			courseID:    "get-test-course",
+			expectError: false,
+		},
+		{
+			name:        "course not found",
+			courseID:    "nonexistent",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := repo.GetCourseByID(tt.courseID)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+				assert.Equal(t, tt.courseID, result.ID)
+				assert.Equal(t, created.Title, result.Title)
+				assert.Equal(t, created.Metadata.Author, result.Metadata.Author)
+				assert.Len(t, result.Lessons, 1)
+			}
+		})
+	}
+}
+
+func TestCourseRepository_GetAllCourses(t *testing.T) {
+	db := setupTestDB(t)
+	repo := NewCourseRepository(db)
+
+	// Create test courses
+	courses := []*models.Course{
+		{
+			ID:          "course-1",
+			Title:       "Course One",
+			Description: "First course",
+		},
+		{
+			ID:          "course-2",
+			Title:       "Course Two",
+			Description: "Second course",
+		},
+		{
+			ID:          "course-3",
+			Title:       "Course Three",
+			Description: "Third course",
+		},
+	}
+
+	for _, course := range courses {
+		_, err := repo.CreateCourse(course)
+		require.NoError(t, err)
+	}
+
+	tests := []struct {
+		name          string
+		offset        int
+		limit         int
+		expectedLen   int
+		expectedTotal int64
+	}{
+		{
+			name:          "get all courses",
+			offset:        0,
+			limit:         10,
+			expectedLen:   3,
+			expectedTotal: 3,
+		},
+		{
+			name:          "get courses with pagination",
+			offset:        1,
+			limit:         2,
+			expectedLen:   2,
+			expectedTotal: 3,
+		},
+		{
+			name:          "get courses with small limit",
+			offset:        0,
+			limit:         1,
+			expectedLen:   1,
+			expectedTotal: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, total, err := repo.GetAllCourses(tt.offset, tt.limit)
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedTotal, total)
+			assert.Len(t, result, tt.expectedLen)
+		})
+	}
+}
+
+func TestCourseRepository_UpdateCourse(t *testing.T) {
+	db := setupTestDB(t)
+	repo := NewCourseRepository(db)
+
+	// Create initial course
+	course := &models.Course{
+		ID:          "update-test-course",
+		Title:       "Original Title",
+		Description: "Original description",
+		Metadata: models.CourseMetadata{
+			Author:   "Original Author",
+			Language: "en",
+		},
+		Lessons: []models.Lesson{
+			{
+				ID:      "original-lesson",
+				Title:   "Original Lesson",
+				Content: "Original content",
+				Order:   1,
+			},
+		},
+	}
+
+	_, err := repo.CreateCourse(course)
+	require.NoError(t, err)
+
+	// Update course
+	updatedCourse := &models.Course{
+		ID:          "update-test-course",
+		Title:       "Updated Title",
+		Description: "Updated description",
+		Metadata: models.CourseMetadata{
+			Author:   "Updated Author",
+			Language: "es",
+		},
+		Lessons: []models.Lesson{
+			{
+				ID:      "updated-lesson",
+				Title:   "Updated Lesson",
+				Content: "Updated content",
+				Order:   1,
+			},
+		},
+	}
+
+	result, err := repo.UpdateCourse("update-test-course", updatedCourse)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "update-test-course", result.ID)
+	assert.Equal(t, "Updated Title", result.Title)
+	assert.Equal(t, "Updated description", result.Description)
+	assert.Equal(t, "Updated Author", result.Metadata.Author)
+	assert.Equal(t, "es", result.Metadata.Language)
+	assert.True(t, result.UpdatedAt.After(result.CreatedAt))
+
+	// Verify lessons were updated
+	assert.Len(t, result.Lessons, 1)
+	assert.Equal(t, "updated-lesson", result.Lessons[0].ID)
+	assert.Equal(t, "Updated Lesson", result.Lessons[0].Title)
+	assert.Equal(t, "Updated content", result.Lessons[0].Content)
+}
+
+func TestCourseRepository_DeleteCourse(t *testing.T) {
+	db := setupTestDB(t)
+	repo := NewCourseRepository(db)
+
+	// Create course
+	course := &models.Course{
+		ID:          "delete-test-course",
+		Title:       "Delete Test Course",
+		Description: "Course to be deleted",
+	}
+
+	_, err := repo.CreateCourse(course)
+	require.NoError(t, err)
+
+	// Verify course exists
+	_, err = repo.GetCourseByID("delete-test-course")
+	assert.NoError(t, err)
+
+	// Delete course
+	err = repo.DeleteCourse("delete-test-course")
+	assert.NoError(t, err)
+
+	// Verify course is deleted
+	_, err = repo.GetCourseByID("delete-test-course")
+	assert.Error(t, err)
+}
+
+func TestCourseRepository_SearchCourses(t *testing.T) {
+	db := setupTestDB(t)
+	repo := NewCourseRepository(db)
+
+	// Create test courses
+	courses := []*models.Course{
+		{
+			ID:          "search-1",
+			Title:       "Golang Programming",
+			Description: "Learn Go programming language",
+		},
+		{
+			ID:          "search-2",
+			Title:       "Python Basics",
+			Description: "Introduction to Python programming",
+		},
+		{
+			ID:          "search-3",
+			Title:       "Advanced Golang",
+			Description: "Advanced Go concepts",
+		},
+	}
+
+	for _, course := range courses {
+		_, err := repo.CreateCourse(course)
+		require.NoError(t, err)
+	}
+
+	tests := []struct {
+		name          string
+		query         string
+		offset        int
+		limit         int
+		expectedLen   int
+		expectedTotal int64
+	}{
+		{
+			name:          "search by title",
+			query:         "Golang",
+			offset:        0,
+			limit:         10,
+			expectedLen:   2,
+			expectedTotal: 2,
+		},
+		{
+			name:          "search by description",
+			query:         "programming",
+			offset:        0,
+			limit:         10,
+			expectedLen:   2,
+			expectedTotal: 2,
+		},
+		{
+			name:          "search with no results",
+			query:         "nonexistent",
+			offset:        0,
+			limit:         10,
+			expectedLen:   0,
+			expectedTotal: 0,
+		},
+		{
+			name:          "search with pagination",
+			query:         "Go",
+			offset:        0,
+			limit:         1,
+			expectedLen:   1,
+			expectedTotal: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, total, err := repo.SearchCourses(tt.query, tt.offset, tt.limit)
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedTotal, total)
+			assert.Len(t, result, tt.expectedLen)
+		})
+	}
+}
+
+func TestCourseRepository_ErrorHandling(t *testing.T) {
+	db := setupTestDB(t)
+	repo := NewCourseRepository(db)
+
+	t.Run("create course with duplicate ID should fail", func(t *testing.T) {
+		course := &models.Course{
+			ID:          "duplicate-test",
+			Title:       "Test Course",
+			Description: "A test course",
+		}
+
+		// Create first course
+		_, err := repo.CreateCourse(course)
+		assert.NoError(t, err)
+
+		// Try to create duplicate - this should fail due to unique constraint
+		_, err = repo.CreateCourse(course)
+		assert.Error(t, err)
+	})
+
+	t.Run("update non-existent course should fail", func(t *testing.T) {
+		course := &models.Course{
+			ID:          "nonexistent-update",
+			Title:       "Updated Title",
+			Description: "Updated description",
+		}
+
+		_, err := repo.UpdateCourse("nonexistent-update", course)
+		assert.Error(t, err)
+	})
+
+	t.Run("delete non-existent course should not error", func(t *testing.T) {
+		// GORM delete is idempotent - deleting non-existent record doesn't error
+		err := repo.DeleteCourse("nonexistent-delete")
+		assert.NoError(t, err)
+	})
+}
