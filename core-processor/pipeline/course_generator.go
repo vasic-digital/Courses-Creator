@@ -114,6 +114,7 @@ func (cg *CourseGenerator) GenerateCourse(markdownPath, outputDir string, option
 	}
 
 	// Create course object
+	now := time.Now()
 	course := &models.Course{
 		ID:          fmt.Sprintf("course_%d", utils.HashString(content)),
 		Title:       title,
@@ -123,6 +124,8 @@ func (cg *CourseGenerator) GenerateCourse(markdownPath, outputDir string, option
 			Language: getStringFromMap(metadata, "language", getStringFromMap(parsedCourse.Metadata, "language", "en")),
 			Tags:     getStringSliceFromMap(metadata, "tags", getStringSliceFromMap(parsedCourse.Metadata, "tags", []string{})),
 		},
+		CreatedAt: &now,
+		UpdatedAt: &now,
 	}
 
 	// Generate lessons with enhanced content

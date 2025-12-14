@@ -520,7 +520,7 @@ func TestUpdateResult(t *testing.T) {
 	// Update result
 	result := map[string]interface{}{
 		"output_path": "/tmp/output",
-		"duration":    300,
+		"duration":    float64(300),
 		"status":      "completed",
 	}
 
@@ -541,7 +541,7 @@ func TestConvertFromDBModel(t *testing.T) {
 	payload := map[string]interface{}{"input": "/input.md", "output": "/output"}
 	payloadJSON, _ := json.Marshal(payload)
 
-	result := map[string]interface{}{"status": "success", "duration": 300}
+	result := map[string]interface{}{"status": "success", "duration": float64(300)}
 	resultJSON, _ := json.Marshal(result)
 
 	dbModel := &models.JobDB{
