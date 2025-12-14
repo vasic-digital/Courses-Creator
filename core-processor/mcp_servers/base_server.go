@@ -74,6 +74,11 @@ type MCPError struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
+// Error implements the error interface
+func (e *MCPError) Error() string {
+	return fmt.Sprintf("MCP error %d: %s", e.Code, e.Message)
+}
+
 // ToolInfo represents tool information for listing
 type ToolInfo struct {
 	Name        string                 `json:"name"`

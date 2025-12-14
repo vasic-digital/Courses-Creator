@@ -652,3 +652,400 @@ func TestExecuteCommandWithOutput(t *testing.T) {
 	_, err = utils.ExecuteCommandWithOutput(ctx, "nonexistent_command")
 	assert.Error(t, err)
 }
+
+// Additional unit tests for MCP servers without external dependencies
+
+func TestBaseServerImpl_ProcessRequest_InvalidJSON(t *testing.T) {
+	config := mcp_servers.MCPServerConfig{
+		Name:    "test-server",
+		Version: "1.0.0",
+	}
+
+	server := mcp_servers.NewBaseServer(config)
+
+	// Test invalid JSON
+	response := server.ProcessRequest("invalid json")
+
+	assert.Equal(t, "2.0", response.JSONRPC)
+	assert.Equal(t, float64(-32700), response.ID) // Parse error ID
+	assert.Nil(t, response.Result)
+	assert.NotNil(t, response.Error)
+	assert.Equal(t, int(-32700), int(response.Error.Code)) // Parse error
+}
+
+func TestBaseServerImpl_ProcessRequest_UnknownMethod(t *testing.T) {
+	config := mcp_servers.MCPServerConfig{
+		Name:    "test-server",
+		Version: "1.0.0",
+	}
+
+	server := mcp_servers.NewBaseServer(config)
+
+	// Test unknown method
+	request := `{"jsonrpc":"2.0","id":1,"method":"unknown_method","params":{}}`
+	response := server.ProcessRequest(request)
+
+	assert.Equal(t, "2.0", response.JSONRPC)
+	assert.Equal(t, float64(1), response.ID)
+	assert.Nil(t, response.Result)
+	assert.NotNil(t, response.Error)
+	assert.Equal(t, int(-32601), int(response.Error.Code)) // Method not found
+}
+
+func TestBaseServerImpl_ProcessRequest_ToolCall(t *testing.T) {
+	config := mcp_servers.MCPServerConfig{
+		Name:    "test-server",
+		Version: "1.0.0",
+	}
+
+	server := mcp_servers.NewBaseServer(config)
+
+	// Add a test tool
+	testHandler := func(args map[string]interface{}) (interface{}, error) {
+		return map[string]interface{}{"result": "success", "input": args["input"]}, nil
+	}
+	server.AddTool("test_tool", "A test tool", testHandler)
+
+	// Test tool call
+	request := `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"test_tool","arguments":{"input":"test_value"}}}`
+	response := server.ProcessRequest(request)
+
+	assert.Equal(t, "2.0", response.JSONRPC)
+	assert.Equal(t, float64(2), response.ID)
+	assert.NotNil(t, response.Result)
+	assert.Nil(t, response.Error)
+
+	resultMap, ok := response.Result.(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, "success", resultMap["result"])
+	assert.Equal(t, "test_value", resultMap["input"])
+}
+
+func TestBaseServerImpl_ProcessRequest_ToolCall_UnknownTool(t *testing.T) {
+	config := mcp_servers.MCPServerConfig{
+		Name:    "test-server",
+		Version: "1.0.0",
+	}
+
+	server := mcp_servers.NewBaseServer(config)
+
+	// Test tool call with unknown tool
+	request := `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"unknown_tool","arguments":{}}}`
+	response := server.ProcessRequest(request)
+
+	assert.Equal(t, "2.0", response.JSONRPC)
+	assert.Equal(t, float64(3), response.ID)
+	assert.Nil(t, response.Result)
+	assert.NotNil(t, response.Error)
+	assert.Contains(t, response.Error.Message, "unknown tool")
+}
+
+func TestBaseServerImpl_ProcessRequest_ToolCall_InvalidArguments(t *testing.T) {
+	config := mcp_servers.MCPServerConfig{
+		Name:    "test-server",
+		Version: "1.0.0",
+	}
+
+	server := mcp_servers.NewBaseServer(config)
+
+	// Add a test tool that expects arguments
+	testHandler := func(args map[string]interface{}) (interface{}, error) {
+		if args["required"] == nil {
+			return nil, &mcp_servers.MCPError{Code: -32602, Message: "Missing required argument"}
+		}
+		return "success", nil
+	}
+	server.AddTool("test_tool", "A test tool", testHandler)
+
+	// Test tool call with invalid arguments
+	request := `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"test_tool","arguments":{}}}`
+	response := server.ProcessRequest(request)
+
+	assert.Equal(t, "2.0", response.JSONRPC)
+	assert.Equal(t, float64(4), response.ID)
+	assert.Nil(t, response.Result)
+	assert.NotNil(t, response.Error)
+	assert.Equal(t, int(-32602), int(response.Error.Code))
+}
+
+func TestBarkTTSServer_GenerateTTS_InvalidArgs(t *testing.T) {
+	server := mcp_servers.NewBarkTTSServer()
+
+	tests := []struct {
+		name        string
+		args        map[string]interface{}
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "missing text",
+			args:        map[string]interface{}{"voice_preset": "v2/en_speaker_6"},
+			expectError: true,
+			errorMsg:    "text is required",
+		},
+		{
+			name:        "empty text",
+			args:        map[string]interface{}{"text": "", "voice_preset": "v2/en_speaker_6"},
+			expectError: true,
+			errorMsg:    "text cannot be empty",
+		},
+		{
+			name:        "invalid voice preset",
+			args:        map[string]interface{}{"text": "Hello", "voice_preset": "invalid_voice"},
+			expectError: true,
+			errorMsg:    "invalid voice preset",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := server.GenerateTTS(tt.args)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Nil(t, result)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+			}
+		})
+	}
+}
+
+func TestBarkTTSServer_ListVoices_NoExternalCall(t *testing.T) {
+	server := mcp_servers.NewBarkTTSServer()
+
+	// Test that ListVoices returns predefined voices without external calls
+	args := map[string]interface{}{}
+	result, err := server.ListVoices(args)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+
+	resultMap, ok := result.(map[string]interface{})
+	require.True(t, ok)
+
+	assert.Contains(t, resultMap, "voices")
+	assert.Contains(t, resultMap, "total")
+
+	voices, ok := resultMap["voices"].([]map[string]interface{})
+	require.True(t, ok)
+	assert.Greater(t, len(voices), 0)
+}
+
+func TestSpeechT5TTSServer_GenerateTTS_InvalidArgs(t *testing.T) {
+	server := mcp_servers.NewSpeechT5Server()
+
+	tests := []struct {
+		name        string
+		args        map[string]interface{}
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "missing text",
+			args:        map[string]interface{}{"voice_preset": "default"},
+			expectError: true,
+			errorMsg:    "text is required",
+		},
+		{
+			name:        "empty text",
+			args:        map[string]interface{}{"text": "", "voice_preset": "default"},
+			expectError: true,
+			errorMsg:    "text cannot be empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := server.GenerateTTS(tt.args)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Nil(t, result)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			}
+		})
+	}
+}
+
+func TestLLaVAServer_AnalyzeImage_InvalidArgs(t *testing.T) {
+	server := mcp_servers.NewLLaVAServer()
+
+	tests := []struct {
+		name        string
+		args        map[string]interface{}
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "missing image",
+			args:        map[string]interface{}{"prompt": "Describe this image"},
+			expectError: true,
+			errorMsg:    "image path is required",
+		},
+		{
+			name:        "empty image",
+			args:        map[string]interface{}{"image": "", "prompt": "Describe this image"},
+			expectError: true,
+			errorMsg:    "image path cannot be empty",
+		},
+		{
+			name:        "missing prompt",
+			args:        map[string]interface{}{"image": "/path/to/image.jpg"},
+			expectError: true,
+			errorMsg:    "prompt is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := server.AnalyzeImage(tt.args)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Nil(t, result)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			}
+		})
+	}
+}
+
+func TestPix2StructServer_ParseUI_InvalidArgs(t *testing.T) {
+	server := mcp_servers.NewPix2StructServer()
+
+	tests := []struct {
+		name        string
+		args        map[string]interface{}
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "missing image",
+			args:        map[string]interface{}{"prompt": "Describe the UI"},
+			expectError: true,
+			errorMsg:    "image path is required",
+		},
+		{
+			name:        "empty image",
+			args:        map[string]interface{}{"image": "", "prompt": "Describe the UI"},
+			expectError: true,
+			errorMsg:    "image path cannot be empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := server.ParseUI(tt.args)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Nil(t, result)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			}
+		})
+	}
+}
+
+func TestSunoServer_NewSunoServer(t *testing.T) {
+	server := mcp_servers.NewSunoServer()
+
+	require.NotNil(t, server)
+	assert.Equal(t, "suno-music", server.Config.Name)
+	assert.Equal(t, "1.0.0", server.Config.Version)
+	assert.Equal(t, "stdio", server.Config.Transport)
+	assert.NotNil(t, server.Tools)
+}
+
+func TestSunoServer_GenerateMusic_InvalidArgs(t *testing.T) {
+	server := mcp_servers.NewSunoServer()
+
+	tests := []struct {
+		name        string
+		args        map[string]interface{}
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "missing prompt",
+			args:        map[string]interface{}{"duration": 30},
+			expectError: true,
+			errorMsg:    "prompt is required",
+		},
+		{
+			name:        "empty prompt",
+			args:        map[string]interface{}{"prompt": "", "duration": 30},
+			expectError: true,
+			errorMsg:    "prompt cannot be empty",
+		},
+		{
+			name:        "invalid duration",
+			args:        map[string]interface{}{"prompt": "Create happy music", "duration": 0},
+			expectError: true,
+			errorMsg:    "duration must be between 10 and 60 seconds",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := server.GenerateMusic(tt.args)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Nil(t, result)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			}
+		})
+	}
+}
+
+func TestMCPError_Error(t *testing.T) {
+	err := &mcp_servers.MCPError{
+		Code:    -32600,
+		Message: "Invalid Request",
+		Data:    map[string]interface{}{"details": "missing method"},
+	}
+
+	errorStr := err.Error()
+	assert.Contains(t, errorStr, "Invalid Request")
+	assert.Contains(t, errorStr, "-32600")
+}
+
+func TestBaseServerImpl_Run_InvalidTransport(t *testing.T) {
+	config := mcp_servers.MCPServerConfig{
+		Name:      "test-server",
+		Version:   "1.0.0",
+		Transport: "invalid_transport",
+	}
+
+	server := mcp_servers.NewBaseServer(config)
+
+	err := server.Run()
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported transport")
+}
+
+func TestBaseServerImpl_AddTool_DuplicateName(t *testing.T) {
+	config := mcp_servers.MCPServerConfig{
+		Name:    "test-server",
+		Version: "1.0.0",
+	}
+
+	server := mcp_servers.NewBaseServer(config)
+
+	// Add first tool
+	server.AddTool("test_tool", "First description", func(args map[string]interface{}) (interface{}, error) {
+		return "first", nil
+	})
+
+	// Add duplicate tool (should overwrite)
+	server.AddTool("test_tool", "Second description", func(args map[string]interface{}) (interface{}, error) {
+		return "second", nil
+	})
+
+	assert.Contains(t, server.Tools, "test_tool")
+	tool := server.Tools["test_tool"]
+	assert.Equal(t, "Second description", tool.Description) // Should be updated
+}

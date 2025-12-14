@@ -214,6 +214,99 @@ func TestJobDB_BeforeCreate(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestCourseMetadataDB_BeforeCreate(t *testing.T) {
+	metadata := &CourseMetadataDB{
+		CourseID: "course-123",
+		Author:   "Test Author",
+		Language: "en",
+	}
+
+	err := metadata.BeforeCreate(&gorm.DB{})
+	require.NoError(t, err)
+
+	assert.NotEmpty(t, metadata.ID)
+	_, err = uuid.Parse(metadata.ID)
+	assert.NoError(t, err)
+}
+
+func TestSubtitleDB_BeforeCreate(t *testing.T) {
+	subtitle := &SubtitleDB{
+		LessonID: "lesson-123",
+		Language: "en",
+		Content:  "Test subtitle content",
+	}
+
+	err := subtitle.BeforeCreate(&gorm.DB{})
+	require.NoError(t, err)
+
+	assert.NotEmpty(t, subtitle.ID)
+	_, err = uuid.Parse(subtitle.ID)
+	assert.NoError(t, err)
+}
+
+func TestInteractiveElementDB_BeforeCreate(t *testing.T) {
+	element := &InteractiveElementDB{
+		LessonID: "lesson-123",
+		Type:     "quiz",
+		Content:  "Test quiz content",
+		Position: 150,
+	}
+
+	err := element.BeforeCreate(&gorm.DB{})
+	require.NoError(t, err)
+
+	assert.NotEmpty(t, element.ID)
+	_, err = uuid.Parse(element.ID)
+	assert.NoError(t, err)
+}
+
+func TestProcessingJobDB_BeforeCreate(t *testing.T) {
+	courseID := "course-123"
+	job := &ProcessingJobDB{
+		CourseID: &courseID,
+		Status:   "pending",
+	}
+
+	err := job.BeforeCreate(&gorm.DB{})
+	require.NoError(t, err)
+
+	assert.NotEmpty(t, job.ID)
+	_, err = uuid.Parse(job.ID)
+	assert.NoError(t, err)
+}
+
+func TestUserPreferencesDB_BeforeCreate(t *testing.T) {
+	prefs := &UserPreferencesDB{
+		UserID:          "user-123",
+		Voice:           "en-US",
+		BackgroundStyle: "nature",
+		Quality:         "high",
+		Language:        "en",
+	}
+
+	err := prefs.BeforeCreate(&gorm.DB{})
+	require.NoError(t, err)
+
+	assert.NotEmpty(t, prefs.ID)
+	_, err = uuid.Parse(prefs.ID)
+	assert.NoError(t, err)
+}
+
+func TestUserSessionDB_BeforeCreate(t *testing.T) {
+	session := &UserSessionDB{
+		UserID:    "user-123",
+		TokenHash: "hashed-session-token-123",
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
+
+	err := session.BeforeCreate(&gorm.DB{})
+	require.NoError(t, err)
+
+	assert.NotEmpty(t, session.ID)
+	_, err = uuid.Parse(session.ID)
+	assert.NoError(t, err)
+}
+
 func TestTableNames(t *testing.T) {
 	assert.Equal(t, "courses", CourseDB{}.TableName())
 	assert.Equal(t, "course_metadata", CourseMetadataDB{}.TableName())
