@@ -113,8 +113,8 @@ func TestDatabase_Integration(t *testing.T) {
 		}
 		t.Logf("GetAllCourses returned %d courses, total=%d", len(courses), total)
 		require.NoError(t, err)
-		assert.GreaterOrEqual(t, len(courses), 1)
-		assert.GreaterOrEqual(t, total, 1)
+		assert.GreaterOrEqual(t, len(courses), 1, "Should have at least 1 course")
+		assert.GreaterOrEqual(t, total, int64(1), "Total should be at least 1")
 
 		// Test Search
 		searchedCourses, total, err := courseRepo.SearchCourses("Test", 0, 10)
@@ -123,8 +123,8 @@ func TestDatabase_Integration(t *testing.T) {
 		}
 		t.Logf("SearchCourses returned %d courses, total=%d", len(searchedCourses), total)
 		require.NoError(t, err)
-		assert.GreaterOrEqual(t, len(searchedCourses), 1)
-		assert.GreaterOrEqual(t, total, 1)
+		assert.GreaterOrEqual(t, len(searchedCourses), 1, "Should have at least 1 searched course")
+		assert.GreaterOrEqual(t, total, int64(1), "Total searched should be at least 1")
 
 		// Test Delete
 		err = courseRepo.DeleteCourse(course.ID)
@@ -144,8 +144,6 @@ func TestDatabase_Integration(t *testing.T) {
 			InputPath: "/test/input.md",
 			Options:   "{}",
 			Progress:  0,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
 		}
 
 		// Test Create
@@ -170,16 +168,24 @@ func TestDatabase_Integration(t *testing.T) {
 		assert.Equal(t, 50, updatedJob.Progress)
 
 		// Test Get All Jobs
-		jobs, total, err := jobRepo.GetAllJobs(1, 10)
+		jobs, total, err := jobRepo.GetAllJobs(0, 10)
+		if err != nil {
+			t.Logf("GetAllJobs error: %v", err)
+		}
+		t.Logf("GetAllJobs returned %d jobs, total=%d", len(jobs), total)
 		require.NoError(t, err)
-		assert.GreaterOrEqual(t, len(jobs), 1)
-		assert.GreaterOrEqual(t, total, 1)
+		assert.GreaterOrEqual(t, len(jobs), 1, "Should have at least 1 job")
+		assert.GreaterOrEqual(t, total, int64(1), "Total should be at least 1")
 
 		// Test Get Jobs by Status
-		processingJobs, total, err := jobRepo.GetJobsByStatus("processing", 1, 10)
+		processingJobs, total, err := jobRepo.GetJobsByStatus("processing", 0, 10)
+		if err != nil {
+			t.Logf("GetJobsByStatus error: %v", err)
+		}
+		t.Logf("GetJobsByStatus returned %d jobs, total=%d", len(processingJobs), total)
 		require.NoError(t, err)
-		assert.GreaterOrEqual(t, len(processingJobs), 1)
-		assert.GreaterOrEqual(t, total, 1)
+		assert.GreaterOrEqual(t, len(processingJobs), 1, "Should have at least 1 processing job")
+		assert.GreaterOrEqual(t, total, int64(1), "Total processing should be at least 1")
 
 		// Test Get Pending Jobs
 		pendingJobs, err := jobRepo.GetPendingJobs()

@@ -123,21 +123,12 @@ func (r *CourseRepository) CreateCourse(course *models.Course) (*models.CourseDB
 // GetCourseByID retrieves a course by ID
 func (r *CourseRepository) GetCourseByID(id string) (*models.CourseDB, error) {
 	var course models.CourseDB
-	// Try without preloads first
-	if err := r.db.First(&course, "id = ?", id).Error; err != nil {
+	if err := r.db.Preload("Metadata").Preload("Lessons.Subtitles").Preload("Lessons.InteractiveElements").First(&course, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("course not found")
 		}
 		return nil, fmt.Errorf("failed to get course: %w", err)
 	}
-
-	// Try to preload metadata separately
-	if err := r.db.Preload("Metadata").First(&course, "id = ?", id).Error; err != nil {
-		// If preload fails, just return the course without metadata
-		// This can happen if there's an issue with the metadata table or relation
-		return &course, nil
-	}
-
 	return &course, nil
 }
 

@@ -86,6 +86,6 @@ func TestMinimalDatabase(t *testing.T) {
 		t.Logf("GetAllCourses returned %d courses, total=%d", len(courses), total)
 	}
 	assert.NoError(t, err)
-	assert.GreaterOrEqual(t, len(courses), 1)
-	assert.GreaterOrEqual(t, total, 1)
+	assert.GreaterOrEqual(t, len(courses), 1, "Should have at least 1 course")
+	assert.GreaterOrEqual(t, total, int64(1), "Total should be at least 1")
 }
