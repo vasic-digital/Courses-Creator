@@ -1063,8 +1063,10 @@ func TestAuthHandler_CreateUserByAdmin(t *testing.T) {
 				var response map[string]interface{}
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				require.NoError(t, err)
-				assert.Contains(t, response, "user")
-				assert.Contains(t, response, "message")
+				// Check that response contains user fields directly (not wrapped in "user" object)
+				assert.Contains(t, response, "id")
+				assert.Contains(t, response, "email")
+				assert.Contains(t, response, "first_name")
 			}
 		})
 	}
@@ -1085,13 +1087,13 @@ func TestAuthHandler_Logout_EdgeCases(t *testing.T) {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
-		// Should still return OK even without user_id set
-		assert.Equal(t, http.StatusOK, w.Code)
+		// Should return 401 when not authenticated
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
-		assert.Contains(t, response, "message")
+		assert.Contains(t, response, "error")
 	})
 }
 

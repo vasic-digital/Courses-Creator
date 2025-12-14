@@ -294,7 +294,14 @@ func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 // @Router /api/v1/admin/users [post]
 func (h *AuthHandler) CreateUserByAdmin(c *gin.Context) {
 	// This endpoint requires admin permissions
-	// The middleware should have already verified this
+	// Check user role (temporary until proper admin middleware is implemented)
+	userRole, exists := c.Get("user_role")
+	if !exists || userRole != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Admin privileges required",
+		})
+		return
+	}
 
 	var req struct {
 		services.RegisterRequest
