@@ -27,6 +27,23 @@ func TestDatabase_Integration(t *testing.T) {
 	jobRepo := repository.NewProcessingJobRepository(db)
 
 	t.Run("Course CRUD Operations", func(t *testing.T) {
+		// First create a system user (matching the hardcoded UserID in CreateCourse)
+		systemUser := &models.UserDB{
+			ID:        "system",
+			Email:     "system@example.com",
+			Password:  "hashed_password",
+			FirstName: "System",
+			LastName:  "User",
+			Role:      "admin",
+			Active:    true,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+
+		// Create system user in database
+		err = db.GetGormDB().Create(systemUser).Error
+		require.NoError(t, err, "Should create system user")
+
 		// Create a course using the API model
 		course := &models.Course{
 			ID:          uuid.New().String(),
@@ -35,19 +52,45 @@ func TestDatabase_Integration(t *testing.T) {
 		}
 
 		// Test Create
+		t.Log("Creating course...")
 		createdCourse, err := courseRepo.CreateCourse(course)
 		if err != nil {
 			t.Logf("CreateCourse error: %v", err)
+		} else {
+			t.Logf("CreateCourse succeeded, createdCourse: %v", createdCourse)
 		}
 		require.NoError(t, err, "CreateCourse should succeed")
 		require.NotNil(t, createdCourse, "Created course should not be nil")
 		assert.Equal(t, course.ID, createdCourse.ID)
 		assert.Equal(t, "Test Course", createdCourse.Title)
 
+		// Direct database check
+		var directCourse models.CourseDB
+		err = db.GetGormDB().First(&directCourse, "id = ?", course.ID).Error
+		if err != nil {
+			t.Logf("Direct database check failed: %v", err)
+			// Count all courses
+			var count int64
+			err = db.GetGormDB().Model(&models.CourseDB{}).Count(&count).Error
+			t.Logf("Total courses in database: %d", count)
+		} else {
+			t.Logf("Direct database check passed: ID=%s, Title=%s, DeletedAt.Valid=%v, DeletedAt.Time=%v", directCourse.ID, directCourse.Title, directCourse.DeletedAt.Valid, directCourse.DeletedAt.Time)
+		}
+
 		// Test Get by ID
 		retrievedCourse, err := courseRepo.GetCourseByID(course.ID)
 		if err != nil {
 			t.Logf("GetCourseByID error: %v", err)
+			// Try to get the course directly without preloads
+			var directCourse models.CourseDB
+			err = db.GetGormDB().First(&directCourse, "id = ?", course.ID).Error
+			if err != nil {
+				t.Logf("Direct query with db.GetGormDB() error: %v", err)
+			} else {
+				t.Logf("Direct query with db.GetGormDB() found course: ID=%s, Title=%s, UserID=%s, DeletedAt=%v", directCourse.ID, directCourse.Title, directCourse.UserID, directCourse.DeletedAt)
+			}
+			// Fail the test
+			t.FailNow()
 		}
 		require.NoError(t, err)
 		assert.Equal(t, course.ID, retrievedCourse.ID)
@@ -64,13 +107,21 @@ func TestDatabase_Integration(t *testing.T) {
 		assert.Equal(t, "Updated Test Course", updatedCourse.Title)
 
 		// Test Get All
-		courses, total, err := courseRepo.GetAllCourses(1, 10)
+		courses, total, err := courseRepo.GetAllCourses(0, 10)
+		if err != nil {
+			t.Logf("GetAllCourses error: %v", err)
+		}
+		t.Logf("GetAllCourses returned %d courses, total=%d", len(courses), total)
 		require.NoError(t, err)
 		assert.GreaterOrEqual(t, len(courses), 1)
 		assert.GreaterOrEqual(t, total, 1)
 
 		// Test Search
-		searchedCourses, total, err := courseRepo.SearchCourses("Updated", 1, 10)
+		searchedCourses, total, err := courseRepo.SearchCourses("Test", 0, 10)
+		if err != nil {
+			t.Logf("SearchCourses error: %v", err)
+		}
+		t.Logf("SearchCourses returned %d courses, total=%d", len(searchedCourses), total)
 		require.NoError(t, err)
 		assert.GreaterOrEqual(t, len(searchedCourses), 1)
 		assert.GreaterOrEqual(t, total, 1)

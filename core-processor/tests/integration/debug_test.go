@@ -15,7 +15,7 @@ func TestDebugDatabase(t *testing.T) {
 	// Setup in-memory database
 	db, err := database.NewDatabase(&database.Config{
 		Path:  ":memory:",
-		Debug: true, // Enable debug logging
+		Debug: false, // Disable debug logging
 		Env:   "test",
 	})
 	require.NoError(t, err)

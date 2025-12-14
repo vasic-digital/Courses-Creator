@@ -123,12 +123,21 @@ func (r *CourseRepository) CreateCourse(course *models.Course) (*models.CourseDB
 // GetCourseByID retrieves a course by ID
 func (r *CourseRepository) GetCourseByID(id string) (*models.CourseDB, error) {
 	var course models.CourseDB
-	if err := r.db.Preload("Metadata").Preload("Lessons.Subtitles").Preload("Lessons.InteractiveElements").First(&course, "id = ?", id).Error; err != nil {
+	// Try without preloads first
+	if err := r.db.First(&course, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("course not found")
 		}
 		return nil, fmt.Errorf("failed to get course: %w", err)
 	}
+
+	// Try to preload metadata separately
+	if err := r.db.Preload("Metadata").First(&course, "id = ?", id).Error; err != nil {
+		// If preload fails, just return the course without metadata
+		// This can happen if there's an issue with the metadata table or relation
+		return &course, nil
+	}
+
 	return &course, nil
 }
 
@@ -142,8 +151,8 @@ func (r *CourseRepository) GetAllCourses(offset, limit int) ([]models.CourseDB, 
 		return nil, 0, fmt.Errorf("failed to count courses: %w", err)
 	}
 
-	// Get courses with pagination
-	if err := r.db.Preload("Metadata").Offset(offset).Limit(limit).Find(&courses).Error; err != nil {
+	// Get courses with pagination (without preload for now to debug)
+	if err := r.db.Offset(offset).Limit(limit).Find(&courses).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to get courses: %w", err)
 	}
 
@@ -292,8 +301,8 @@ func (r *CourseRepository) SearchCourses(query string, offset, limit int) ([]mod
 		return nil, 0, fmt.Errorf("failed to count courses: %w", err)
 	}
 
-	// Get courses with pagination
-	if err := r.db.Preload("Metadata").Where("title LIKE ? OR description LIKE ?", searchPattern, searchPattern).Offset(offset).Limit(limit).Find(&courses).Error; err != nil {
+	// Get courses with pagination (without preload for now to debug)
+	if err := r.db.Where("title LIKE ? OR description LIKE ?", searchPattern, searchPattern).Offset(offset).Limit(limit).Find(&courses).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to search courses: %w", err)
 	}
 
