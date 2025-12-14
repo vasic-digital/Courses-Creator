@@ -1,0 +1,299 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>cmd: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/course-creator/core-processor/cmd/commands.go (71.4%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package cmd
+
+import (
+        "fmt"
+        "log"
+        "net/http"
+        "time"
+
+        "github.com/course-creator/core-processor/database"
+        "github.com/course-creator/core-processor/middleware"
+        "github.com/course-creator/core-processor/models"
+        "github.com/course-creator/core-processor/pipeline"
+        "github.com/gin-gonic/gin"
+)
+
+// StartServer starts the API server
+func StartServer() <span class="cov0" title="0">{
+        // Initialize database
+        dbConfig := database.DefaultConfig()
+        db, err := database.NewDatabase(dbConfig)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("Failed to initialize database: %v", err)
+                return
+        }</span>
+        <span class="cov0" title="0">defer db.Close()
+
+        // Create router with all routes configured
+        r := SetupServerRouter()
+
+        // Note: In the current implementation, we use SetupServerRouter which has placeholder handlers
+        // In a real implementation, we'd initialize services and handlers here
+
+        // Replace placeholder routes with real handlers
+        // Note: In a real implementation, we'd need to modify the router to replace routes
+        // For now, we'll keep the placeholder routes for testing
+
+        // Start server
+        port := "8080"
+        log.Printf("Starting Course Creator API server on port %s", port)
+
+        // Print all registered routes for debugging
+        log.Printf("Registered routes:")
+        for _, route := range r.Routes() </span><span class="cov0" title="0">{
+                log.Printf("  %s %s", route.Method, route.Path)
+        }</span>
+
+        <span class="cov0" title="0">if err := r.Run(":" + port); err != nil </span><span class="cov0" title="0">{
+                log.Printf("Failed to start server: %v", err)
+        }</span>
+}
+
+// GenerateCourse generates a course from markdown file via CLI
+func GenerateCourse(markdownFile, outputDir string) <span class="cov8" title="1">{
+        fmt.Printf("Generating course from %s to %s\n", markdownFile, outputDir)
+
+        generator := pipeline.NewCourseGenerator()
+        options := models.ProcessingOptions{
+                Quality:   "standard",
+                Languages: []string{"en"},
+        }
+
+        course, err := generator.GenerateCourse(markdownFile, outputDir, options)
+        if err != nil </span><span class="cov8" title="1">{
+                log.Printf("Failed to generate course: %v", err)
+                return
+        }</span>
+
+        <span class="cov0" title="0">fmt.Printf("Course generated successfully: %s\n", course.Title)
+        fmt.Printf("Lessons: %d\n", len(course.Lessons))
+        fmt.Printf("Output directory: %s\n", outputDir)</span>
+}
+
+// SetupRouter creates and configures a Gin router for testing
+func SetupRouter() *gin.Engine <span class="cov8" title="1">{
+        // Set Gin mode to test mode
+        gin.SetMode(gin.TestMode)
+
+        // Create Gin router
+        r := gin.New()
+
+        // Add middleware
+        r.Use(gin.Recovery())
+
+        // Add security headers middleware
+        r.Use(func(c *gin.Context) </span><span class="cov8" title="1">{
+                c.Header("X-Content-Type-Options", "nosniff")
+                c.Header("X-Frame-Options", "DENY")
+                c.Header("X-XSS-Protection", "1; mode=block")
+                c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+                c.Next()
+        }</span>)
+
+        // Add a simple health check route for testing
+        <span class="cov8" title="1">r.GET("/", func(c *gin.Context) </span><span class="cov8" title="1">{
+                c.JSON(http.StatusOK, gin.H{"status": "ok"})
+        }</span>)
+
+        <span class="cov8" title="1">return r</span>
+}
+
+// SetupServerRouter creates and configures the full server router (extracted for testing)
+func SetupServerRouter() *gin.Engine <span class="cov8" title="1">{
+        // Set Gin mode
+        gin.SetMode(gin.ReleaseMode)
+
+        // Create Gin router
+        r := gin.Default()
+
+        // Add middleware
+        r.Use(gin.Logger())
+        r.Use(gin.Recovery())
+
+        // Add security headers middleware
+        r.Use(func(c *gin.Context) </span><span class="cov8" title="1">{
+                c.Header("X-Content-Type-Options", "nosniff")
+                c.Header("X-Frame-Options", "DENY")
+                c.Header("X-XSS-Protection", "1; mode=block")
+                c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+                c.Next()
+        }</span>)
+
+        // Initialize authentication
+        <span class="cov8" title="1">authMiddleware := middleware.NewAuthMiddleware()
+
+        // Rate limiting middleware
+        rateLimiter := middleware.NewRateLimiter(100, time.Minute) // 100 requests per minute
+
+        // Public API routes (no auth required)
+        v1 := r.Group("/api/v1")
+        v1.Use(rateLimiter.Middleware())
+        </span><span class="cov8" title="1">{
+                v1.GET("/health", func(c *gin.Context) </span><span class="cov8" title="1">{
+                        c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+                }</span>)
+
+                // Authentication routes
+                <span class="cov8" title="1">authGroup := v1.Group("/auth")
+                </span><span class="cov8" title="1">{
+                        authGroup.POST("/register", func(c *gin.Context) </span><span class="cov8" title="1">{
+                                c.JSON(http.StatusOK, gin.H{"message": "register endpoint"})
+                        }</span>)
+                        <span class="cov8" title="1">authGroup.POST("/login", func(c *gin.Context) </span><span class="cov8" title="1">{
+                                c.JSON(http.StatusOK, gin.H{"message": "login endpoint"})
+                        }</span>)
+                        <span class="cov8" title="1">authGroup.POST("/refresh", func(c *gin.Context) </span><span class="cov8" title="1">{
+                                c.JSON(http.StatusOK, gin.H{"message": "refresh endpoint"})
+                        }</span>)
+                }
+
+                // Debug route to see all registered routes
+                <span class="cov8" title="1">v1.GET("/debug/routes", func(c *gin.Context) </span><span class="cov8" title="1">{
+                        routes := c.FullPath()
+                        c.JSON(200, gin.H{
+                                "message": "Routes debug",
+                                "path":    routes,
+                                "query":   c.Request.URL.RawQuery,
+                        })
+                }</span>)
+        }
+
+        // Frontend-compatible routes (public for now)
+        <span class="cov8" title="1">publicCourses := v1.Group("/public")
+        </span><span class="cov8" title="1">{
+                publicCourses.GET("/courses", func(c *gin.Context) </span><span class="cov8" title="1">{
+                        c.JSON(http.StatusOK, gin.H{"courses": []string{}})
+                }</span>)
+        }
+
+        // Protected API routes (auth required)
+        <span class="cov8" title="1">protected := v1.Group("")
+        protected.Use(authMiddleware.RequireAuth())
+        </span><span class="cov8" title="1">{
+                // Original endpoints
+                protected.POST("/courses/generate", func(c *gin.Context) </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusOK, gin.H{"message": "generate course"})
+                }</span>)
+                <span class="cov8" title="1">protected.GET("/courses/original", func(c *gin.Context) </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusOK, gin.H{"courses": []string{}})
+                }</span>)
+                <span class="cov8" title="1">protected.GET("/courses/original/:id", func(c *gin.Context) </span><span class="cov0" title="0">{
+                        id := c.Param("id")
+                        c.JSON(http.StatusOK, gin.H{"course_id": id})
+                }</span>)
+
+                // Job endpoints
+                <span class="cov8" title="1">protected.GET("/jobs", func(c *gin.Context) </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusOK, gin.H{"jobs": []string{}})
+                }</span>)
+                <span class="cov8" title="1">protected.GET("/jobs/:id", func(c *gin.Context) </span><span class="cov0" title="0">{
+                        id := c.Param("id")
+                        c.JSON(http.StatusOK, gin.H{"job_id": id})
+                }</span>)
+        }
+
+        <span class="cov8" title="1">return r</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

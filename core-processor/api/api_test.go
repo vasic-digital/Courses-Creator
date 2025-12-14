@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/course-creator/core-processor/database"
@@ -733,4 +734,450 @@ func TestCourseHandler_GenerateCourse(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test AuthHandler UpdateProfile
+func TestAuthHandler_UpdateProfile(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupAPITestDB(t)
+	authHandler, _, _, _ := setupTestHandlers(db)
+
+	// Create a user first
+	authService, _, _ := setupTestServices(db)
+	resp, err := authService.Register(context.Background(), &services.RegisterRequest{
+		Email:     "update@example.com",
+		FirstName: "Update",
+		LastName:  "Test",
+		Password:  "ValidPass123!",
+	})
+	require.NoError(t, err)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("user_id", resp.User.ID)
+		c.Next()
+	})
+	router.PUT("/profile", authHandler.UpdateProfile)
+
+	tests := []struct {
+		name           string
+		requestBody    map[string]interface{}
+		expectedStatus int
+		expectError    bool
+	}{
+		{
+			name: "successful profile update",
+			requestBody: map[string]interface{}{
+				"first_name": "Updated",
+				"last_name":  "Name",
+			},
+			expectedStatus: http.StatusOK,
+			expectError:    false,
+		},
+		{
+			name:           "invalid JSON",
+			requestBody:    nil, // This will cause JSON parsing error
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+		},
+		{
+			name: "unauthenticated request",
+			requestBody: map[string]interface{}{
+				"first_name": "ShouldFail",
+			},
+			expectedStatus: http.StatusUnauthorized,
+			expectError:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var req *http.Request
+			if tt.requestBody != nil {
+				body, _ := json.Marshal(tt.requestBody)
+				req = httptest.NewRequest("PUT", "/profile", bytes.NewBuffer(body))
+				req.Header.Set("Content-Type", "application/json")
+			} else {
+				req = httptest.NewRequest("PUT", "/profile", bytes.NewBufferString("invalid json"))
+				req.Header.Set("Content-Type", "application/json")
+			}
+
+			if tt.name == "unauthenticated request" {
+				routerWithoutAuth := gin.New()
+				routerWithoutAuth.PUT("/profile", authHandler.UpdateProfile)
+				w := httptest.NewRecorder()
+				routerWithoutAuth.ServeHTTP(w, req)
+				assert.Equal(t, tt.expectedStatus, w.Code)
+				return
+			}
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			if tt.expectError {
+				var response map[string]interface{}
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				require.NoError(t, err)
+				assert.Contains(t, response, "error")
+			} else {
+				var response map[string]interface{}
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				require.NoError(t, err)
+				assert.Contains(t, response, "id")
+				assert.Contains(t, response, "email")
+				assert.Equal(t, "Updated", response["first_name"])
+			}
+		})
+	}
+}
+
+// Test AuthHandler UpdatePassword
+func TestAuthHandler_UpdatePassword(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupAPITestDB(t)
+	authHandler, _, _, _ := setupTestHandlers(db)
+
+	// Create a user first
+	authService, _, _ := setupTestServices(db)
+	resp, err := authService.Register(context.Background(), &services.RegisterRequest{
+		Email:     "password@example.com",
+		FirstName: "Password",
+		LastName:  "Test",
+		Password:  "ValidPass123!",
+	})
+	require.NoError(t, err)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("user_id", resp.User.ID)
+		c.Next()
+	})
+	router.PUT("/password", authHandler.UpdatePassword)
+
+	tests := []struct {
+		name           string
+		requestBody    map[string]interface{}
+		expectedStatus int
+		expectError    bool
+	}{
+		{
+			name: "successful password update",
+			requestBody: map[string]interface{}{
+				"current_password": "ValidPass123!",
+				"new_password":     "NewValidPass456!",
+			},
+			expectedStatus: http.StatusOK,
+			expectError:    false,
+		},
+		{
+			name: "weak new password",
+			requestBody: map[string]interface{}{
+				"current_password": "ValidPass123!",
+				"new_password":     "weak",
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+		},
+		{
+			name: "wrong current password",
+			requestBody: map[string]interface{}{
+				"current_password": "WrongPass123!",
+				"new_password":     "NewValidPass456!",
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+		},
+		{
+			name: "missing fields",
+			requestBody: map[string]interface{}{
+				"current_password": "ValidPass123!",
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+		},
+		{
+			name: "unauthenticated request",
+			requestBody: map[string]interface{}{
+				"current_password": "ValidPass123!",
+				"new_password":     "NewValidPass456!",
+			},
+			expectedStatus: http.StatusUnauthorized,
+			expectError:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, _ := json.Marshal(tt.requestBody)
+			req := httptest.NewRequest("PUT", "/password", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+
+			if tt.name == "unauthenticated request" {
+				routerWithoutAuth := gin.New()
+				routerWithoutAuth.PUT("/password", authHandler.UpdatePassword)
+				w := httptest.NewRecorder()
+				routerWithoutAuth.ServeHTTP(w, req)
+				assert.Equal(t, tt.expectedStatus, w.Code)
+				return
+			}
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			if tt.expectError {
+				var response map[string]interface{}
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				require.NoError(t, err)
+				assert.Contains(t, response, "error")
+			} else {
+				var response map[string]interface{}
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				require.NoError(t, err)
+				assert.Contains(t, response, "message")
+			}
+		})
+	}
+}
+
+// Test AuthHandler CreateUserByAdmin
+func TestAuthHandler_CreateUserByAdmin(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupAPITestDB(t)
+	authHandler, _, _, _ := setupTestHandlers(db)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("user_id", "admin-user-id")
+		c.Set("user_role", "admin")
+		c.Next()
+	})
+	router.POST("/admin/users", authHandler.CreateUserByAdmin)
+
+	tests := []struct {
+		name           string
+		requestBody    map[string]interface{}
+		expectedStatus int
+		expectError    bool
+	}{
+		{
+			name: "successful user creation by admin",
+			requestBody: map[string]interface{}{
+				"email":      "admincreated@example.com",
+				"first_name": "Admin",
+				"last_name":  "Created",
+				"password":   "ValidPass123!",
+				"role":       "creator",
+			},
+			expectedStatus: http.StatusCreated,
+			expectError:    false,
+		},
+		{
+			name: "invalid email",
+			requestBody: map[string]interface{}{
+				"email":      "invalid-email",
+				"first_name": "Test",
+				"last_name":  "User",
+				"password":   "ValidPass123!",
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+		},
+		{
+			name: "weak password",
+			requestBody: map[string]interface{}{
+				"email":      "weakpass@example.com",
+				"first_name": "Weak",
+				"last_name":  "Pass",
+				"password":   "weak",
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+		},
+		{
+			name: "missing required fields",
+			requestBody: map[string]interface{}{
+				"email": "incomplete@example.com",
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+		},
+		{
+			name: "unauthorized - not admin",
+			requestBody: map[string]interface{}{
+				"email":      "notadmin@example.com",
+				"first_name": "Not",
+				"last_name":  "Admin",
+				"password":   "ValidPass123!",
+			},
+			expectedStatus: http.StatusForbidden,
+			expectError:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, _ := json.Marshal(tt.requestBody)
+			req := httptest.NewRequest("POST", "/admin/users", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+
+			if tt.name == "unauthorized - not admin" {
+				routerWithoutAdmin := gin.New()
+				routerWithoutAdmin.Use(func(c *gin.Context) {
+					c.Set("user_id", "regular-user-id")
+					c.Set("user_role", "creator")
+					c.Next()
+				})
+				routerWithoutAdmin.POST("/admin/users", authHandler.CreateUserByAdmin)
+				w := httptest.NewRecorder()
+				routerWithoutAdmin.ServeHTTP(w, req)
+				assert.Equal(t, tt.expectedStatus, w.Code)
+				return
+			}
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			if tt.expectError {
+				var response map[string]interface{}
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				require.NoError(t, err)
+				assert.Contains(t, response, "error")
+			} else {
+				var response map[string]interface{}
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				require.NoError(t, err)
+				assert.Contains(t, response, "user")
+				assert.Contains(t, response, "message")
+			}
+		})
+	}
+}
+
+// Test AuthHandler Logout with different scenarios
+func TestAuthHandler_Logout_EdgeCases(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupAPITestDB(t)
+	authHandler, _, _, _ := setupTestHandlers(db)
+
+	router := gin.New()
+	router.POST("/logout", authHandler.Logout)
+
+	t.Run("logout without authentication", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/logout", nil)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		// Should still return OK even without user_id set
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.Contains(t, response, "message")
+	})
+}
+
+// Test AuthHandler GetProfile with different scenarios
+func TestAuthHandler_GetProfile_EdgeCases(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupAPITestDB(t)
+	authHandler, _, _, _ := setupTestHandlers(db)
+
+	router := gin.New()
+	router.GET("/profile", authHandler.GetProfile)
+
+	t.Run("profile without authentication", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/profile", nil)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.Contains(t, response, "error")
+	})
+
+	t.Run("profile with invalid user ID", func(t *testing.T) {
+		routerWithInvalidUser := gin.New()
+		routerWithInvalidUser.Use(func(c *gin.Context) {
+			c.Set("user_id", "invalid-user-id")
+			c.Next()
+		})
+		routerWithInvalidUser.GET("/profile", authHandler.GetProfile)
+
+		req := httptest.NewRequest("GET", "/profile", nil)
+
+		w := httptest.NewRecorder()
+		routerWithInvalidUser.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.Contains(t, response, "error")
+	})
+}
+
+// Test CourseAPIService GenerateCourseAPI with more edge cases
+func TestCourseAPIService_GenerateCourseAPI_EdgeCases(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupAPITestDB(t)
+	_, _, _, courseAPIService := setupTestHandlers(db)
+
+	router := gin.New()
+	router.POST("/courses/generate", courseAPIService.GenerateCourseAPI)
+
+	t.Run("generate course with empty markdown", func(t *testing.T) {
+		requestBody := map[string]interface{}{
+			"markdown": "",
+			"options": map[string]interface{}{
+				"quality": "standard",
+			},
+		}
+
+		body, _ := json.Marshal(requestBody)
+		req := httptest.NewRequest("POST", "/courses/generate", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.Contains(t, response, "error")
+	})
+
+	t.Run("generate course with very long markdown", func(t *testing.T) {
+		longMarkdown := strings.Repeat("# Test\n\nContent\n\n", 1000)
+		requestBody := map[string]interface{}{
+			"markdown": longMarkdown,
+			"options": map[string]interface{}{
+				"quality": "standard",
+			},
+		}
+
+		body, _ := json.Marshal(requestBody)
+		req := httptest.NewRequest("POST", "/courses/generate", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		// Should either succeed or fail based on validation
+		assert.True(t, w.Code == http.StatusAccepted || w.Code == http.StatusBadRequest)
+	})
 }
