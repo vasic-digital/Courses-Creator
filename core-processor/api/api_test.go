@@ -29,7 +29,18 @@ func setupAPITestDB(t *testing.T) *database.DB {
 	db := &database.DB{DB: gormDB}
 
 	// Auto-migrate the models
-	err = db.AutoMigrate(&models.UserDB{}, &models.UserPreferencesDB{}, &models.UserSessionDB{}, &models.JobDB{}, &models.CourseDB{}, &models.ProcessingJobDB{})
+	err = db.AutoMigrate(
+		&models.UserDB{},
+		&models.UserPreferencesDB{},
+		&models.UserSessionDB{},
+		&models.JobDB{},
+		&models.CourseDB{},
+		&models.CourseMetadataDB{},
+		&models.LessonDB{},
+		&models.SubtitleDB{},
+		&models.InteractiveElementDB{},
+		&models.ProcessingJobDB{},
+	)
 	require.NoError(t, err)
 
 	return db

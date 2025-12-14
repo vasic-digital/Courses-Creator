@@ -1,9 +1,10 @@
-package main
+package integration
 
 import (
 	"fmt"
 	"log"
 	"net/http"
+	"testing"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,9 +35,10 @@ var courses = []Course{
 	},
 }
 
-func main() {
+// StartTestServer starts a test server for integration testing
+func StartTestServer() *gin.Engine {
 	// Set Gin mode
-	gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(gin.TestMode)
 
 	// Create Gin router
 	r := gin.Default()
@@ -130,18 +132,26 @@ func main() {
 		}
 	}
 
-	// Start server
-	port := "8081"
-	log.Printf("Starting test API server on port %s", port)
-	log.Fatal(r.Run(":" + port))
+	return r
+}
+
+func TestTestServer(t *testing.T) {
+	// Test that the test server can be created
+	router := StartTestServer()
+
+	if router == nil {
+		t.Fatal("Failed to create test server")
+	}
+
+	t.Log("✓ Test server created successfully")
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || 
-		(len(s) > len(substr) && 
-			(s[:len(substr)] == substr || 
-			 s[len(s)-len(substr):] == substr ||
-			 findSubstring(s, substr))))
+	return len(s) >= len(substr) && (s == substr ||
+		(len(s) > len(substr) &&
+			(s[:len(substr)] == substr ||
+				s[len(s)-len(substr):] == substr ||
+				findSubstring(s, substr))))
 }
 
 func findSubstring(s, substr string) bool {
