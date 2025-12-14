@@ -1,6 +1,7 @@
 package utils_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -419,5 +420,120 @@ func TestRetry(t *testing.T) {
 			assert.Error(t, err)
 		}
 		assert.Equal(t, 0, attempts)
+	})
+}
+
+func TestExecuteCommand(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("simple echo command", func(t *testing.T) {
+		cmd := utils.ExecuteCommand(ctx, "echo", "hello", "world")
+		assert.NotNil(t, cmd)
+
+		output, err := cmd.Output()
+		assert.NoError(t, err)
+		assert.Contains(t, string(output), "hello world")
+	})
+
+	t.Run("command with context", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		cmd := utils.ExecuteCommand(ctx, "sleep", "0.1")
+		assert.NotNil(t, cmd)
+
+		err := cmd.Run()
+		assert.NoError(t, err)
+	})
+}
+
+func TestExecuteCommandWithOutput(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("successful command", func(t *testing.T) {
+		output, err := utils.ExecuteCommandWithOutput(ctx, "echo", "test output")
+		assert.NoError(t, err)
+		assert.Contains(t, output, "test output")
+	})
+
+	t.Run("command with error", func(t *testing.T) {
+		_, err := utils.ExecuteCommandWithOutput(ctx, "false")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "command failed")
+	})
+
+	t.Run("non-existent command", func(t *testing.T) {
+		_, err := utils.ExecuteCommandWithOutput(ctx, "nonexistentcommand12345")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "command failed")
+	})
+}
+
+func TestGetFileSize(t *testing.T) {
+	tempDir := t.TempDir()
+
+	t.Run("existing file", func(t *testing.T) {
+		testFile := filepath.Join(tempDir, "test.txt")
+		content := []byte("Hello, World!")
+		err := os.WriteFile(testFile, content, 0644)
+		require.NoError(t, err)
+
+		size, err := utils.GetFileSize(testFile)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(len(content)), size)
+	})
+
+	t.Run("non-existent file", func(t *testing.T) {
+		nonExistentFile := filepath.Join(tempDir, "nonexistent.txt")
+		size, err := utils.GetFileSize(nonExistentFile)
+		assert.Error(t, err)
+		assert.Equal(t, int64(0), size)
+	})
+
+	t.Run("directory instead of file", func(t *testing.T) {
+		testDir := filepath.Join(tempDir, "testdir")
+		err := os.MkdirAll(testDir, 0755)
+		require.NoError(t, err)
+
+		size, err := utils.GetFileSize(testDir)
+		// GetFileSize works on directories too (os.Stat returns size for directories)
+		assert.NoError(t, err)
+		assert.GreaterOrEqual(t, size, int64(0))
+	})
+}
+
+func TestSafeClose(t *testing.T) {
+	t.Run("close nil closer", func(t *testing.T) {
+		// Should not panic
+		utils.SafeClose(nil)
+	})
+
+	t.Run("close with error", func(t *testing.T) {
+		tempDir := t.TempDir()
+		testFile := filepath.Join(tempDir, "test.txt")
+
+		file, err := os.Create(testFile)
+		require.NoError(t, err)
+
+		// Close it first
+		file.Close()
+
+		// Try to close again - should not panic
+		utils.SafeClose(file)
+	})
+
+	t.Run("successful close", func(t *testing.T) {
+		tempDir := t.TempDir()
+		testFile := filepath.Join(tempDir, "test.txt")
+
+		file, err := os.Create(testFile)
+		require.NoError(t, err)
+
+		// Should close successfully
+		utils.SafeClose(file)
+
+		// Verify file is closed
+		_, err = file.Write([]byte("test"))
+		assert.Error(t, err)
 	})
 }
