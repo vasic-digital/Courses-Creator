@@ -46,9 +46,9 @@ describe('App Component', () => {
     render(<App />);
     
     // Should show login page
-    expect(screen.getByText(/Course Creator/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/username/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/password/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Login/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email:/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Password:/i)).toBeInTheDocument();
   });
 
   it('renders course list when authenticated', async () => {
@@ -110,7 +110,7 @@ describe('App Component', () => {
     expect(authAPI.logout).toHaveBeenCalled();
   });
 
-  it('shows error when generating course without file and directory', async () => {
+  it('disables generate button when no files are selected', async () => {
     // Mock authenticated state
     const { authAPI } = require('./services/api');
     authAPI.getCurrentUser.mockResolvedValue({});
@@ -123,11 +123,8 @@ describe('App Component', () => {
       fireEvent.click(screen.getByText(/Create Course/i));
     });
 
-    // Try to generate without selecting files
-    fireEvent.click(screen.getByText(/Generate Course/i));
-    
-    await waitFor(() => {
-      expect(screen.getByText(/Please select both markdown file and output directory/i)).toBeInTheDocument();
-    });
+    // Generate button should be disabled when no files are selected
+    const generateButton = screen.getByText(/Generate Course/i);
+    expect(generateButton).toBeDisabled();
   });
 });
