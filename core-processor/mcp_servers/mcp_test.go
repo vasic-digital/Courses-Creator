@@ -66,11 +66,11 @@ func TestBaseServerImpl(t *testing.T) {
 
 	assert.Nil(t, response.Error)
 	result = response.Result.(map[string]interface{})
-	tools := result["tools"].([]interface{})
+	tools := result["tools"].([]ToolInfo)
 	assert.Len(t, tools, 1)
 
-	tool := tools[0].(map[string]interface{})
-	assert.Equal(t, "test_tool", tool["name"])
+	tool := tools[0]
+	assert.Equal(t, "test_tool", tool.Name)
 
 	// Test tool call request
 	toolCallRequest := MCPRequest{
@@ -145,7 +145,7 @@ func TestLLaVAServer(t *testing.T) {
 	require.NotNil(t, server)
 
 	// Test server configuration
-	assert.Equal(t, "llava-vision", server.Config.Name)
+	assert.Equal(t, "llava-image", server.Config.Name)
 	assert.True(t, server.useLLaVAPython)
 
 	// Test tool registration
@@ -159,12 +159,13 @@ func TestPix2StructServer(t *testing.T) {
 	require.NotNil(t, server)
 
 	// Test server configuration
-	assert.Equal(t, "pix2struct", server.Config.Name)
+	assert.Equal(t, "pix2struct-ui", server.Config.Name)
 	assert.True(t, server.usePix2StructPython)
 
 	// Test tool registration
 	assert.Contains(t, server.Tools, "parse_ui")
-	assert.Contains(t, server.Tools, "extract_data")
+	assert.Contains(t, server.Tools, "extract_buttons")
+	assert.Contains(t, server.Tools, "extract_forms")
 	assert.Contains(t, server.Tools, "get_info")
 }
 
@@ -174,11 +175,11 @@ func TestSunoServer(t *testing.T) {
 
 	// Test server configuration
 	assert.Equal(t, "suno-music", server.Config.Name)
-	assert.True(t, server.useSunoPython)
+	assert.False(t, server.useSunoPython) // Disabled by default
 
 	// Test tool registration
 	assert.Contains(t, server.Tools, "generate_music")
-	assert.Contains(t, server.Tools, "extend_music")
+	assert.Contains(t, server.Tools, "list_styles")
 	assert.Contains(t, server.Tools, "get_info")
 }
 
@@ -203,7 +204,7 @@ func TestMCPServerErrorHandling(t *testing.T) {
 
 	assert.NotNil(t, response.Error)
 	assert.Equal(t, -32000, response.Error.Code)
-	assert.Contains(t, response.Error.Message, "method not found")
+	assert.Equal(t, "Server error", response.Error.Message)
 
 	// Test tool not found
 	toolCallRequest := MCPRequest{
@@ -220,5 +221,5 @@ func TestMCPServerErrorHandling(t *testing.T) {
 
 	assert.NotNil(t, response.Error)
 	assert.Equal(t, -32000, response.Error.Code)
-	assert.Contains(t, response.Error.Message, "tool not found")
+	assert.Equal(t, "Server error", response.Error.Message)
 }

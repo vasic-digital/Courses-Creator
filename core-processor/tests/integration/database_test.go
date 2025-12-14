@@ -79,19 +79,6 @@ func TestDatabase_Integration(t *testing.T) {
 
 		// Test Get by ID
 		retrievedCourse, err := courseRepo.GetCourseByID(course.ID)
-		if err != nil {
-			t.Logf("GetCourseByID error: %v", err)
-			// Try to get the course directly without preloads
-			var directCourse models.CourseDB
-			err = db.GetGormDB().First(&directCourse, "id = ?", course.ID).Error
-			if err != nil {
-				t.Logf("Direct query with db.GetGormDB() error: %v", err)
-			} else {
-				t.Logf("Direct query with db.GetGormDB() found course: ID=%s, Title=%s, UserID=%s, DeletedAt=%v", directCourse.ID, directCourse.Title, directCourse.UserID, directCourse.DeletedAt)
-			}
-			// Fail the test
-			t.FailNow()
-		}
 		require.NoError(t, err)
 		assert.Equal(t, course.ID, retrievedCourse.ID)
 		assert.Equal(t, "Test Course", retrievedCourse.Title)

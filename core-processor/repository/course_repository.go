@@ -142,8 +142,8 @@ func (r *CourseRepository) GetAllCourses(offset, limit int) ([]models.CourseDB, 
 		return nil, 0, fmt.Errorf("failed to count courses: %w", err)
 	}
 
-	// Get courses with pagination (without preload for now to debug)
-	if err := r.db.Offset(offset).Limit(limit).Find(&courses).Error; err != nil {
+	// Get courses with pagination and preload relations
+	if err := r.db.Preload("Metadata").Preload("Lessons.Subtitles").Preload("Lessons.InteractiveElements").Offset(offset).Limit(limit).Find(&courses).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to get courses: %w", err)
 	}
 
@@ -292,8 +292,8 @@ func (r *CourseRepository) SearchCourses(query string, offset, limit int) ([]mod
 		return nil, 0, fmt.Errorf("failed to count courses: %w", err)
 	}
 
-	// Get courses with pagination (without preload for now to debug)
-	if err := r.db.Where("title LIKE ? OR description LIKE ?", searchPattern, searchPattern).Offset(offset).Limit(limit).Find(&courses).Error; err != nil {
+	// Get courses with pagination and preload relations
+	if err := r.db.Preload("Metadata").Preload("Lessons.Subtitles").Preload("Lessons.InteractiveElements").Where("title LIKE ? OR description LIKE ?", searchPattern, searchPattern).Offset(offset).Limit(limit).Find(&courses).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to search courses: %w", err)
 	}
 
