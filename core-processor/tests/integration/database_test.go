@@ -1,0 +1,149 @@
+package integration
+
+import (
+	"testing"
+	"time"
+
+	"github.com/course-creator/core-processor/database"
+	"github.com/course-creator/core-processor/models"
+	"github.com/course-creator/core-processor/repository"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestDatabase_Integration(t *testing.T) {
+	// Setup in-memory database
+	db, err := database.NewDatabase(&database.Config{
+		Path:  ":memory:",
+		Debug: false,
+		Env:   "test",
+	})
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Get repositories
+	courseRepo := repository.NewCourseRepository(db)
+	jobRepo := repository.NewProcessingJobRepository(db)
+
+	t.Run("Course CRUD Operations", func(t *testing.T) {
+		// Create a course using the API model
+		course := &models.Course{
+			ID:          uuid.New().String(),
+			Title:       "Test Course",
+			Description: "Test course description",
+		}
+
+		// Test Create
+		createdCourse, err := courseRepo.CreateCourse(course)
+		require.NoError(t, err)
+		assert.Equal(t, course.ID, createdCourse.ID)
+		assert.Equal(t, "Test Course", createdCourse.Title)
+
+		// Test Get by ID
+		retrievedCourse, err := courseRepo.GetCourseByID(course.ID)
+		require.NoError(t, err)
+		assert.Equal(t, course.ID, retrievedCourse.ID)
+		assert.Equal(t, "Test Course", retrievedCourse.Title)
+
+		// Test Update - need to convert CourseDB back to Course for update
+		updateCourse := &models.Course{
+			ID:          retrievedCourse.ID,
+			Title:       "Updated Test Course",
+			Description: retrievedCourse.Description,
+		}
+		updatedCourse, err := courseRepo.UpdateCourse(course.ID, updateCourse)
+		require.NoError(t, err)
+		assert.Equal(t, "Updated Test Course", updatedCourse.Title)
+
+		// Test Get All
+		courses, total, err := courseRepo.GetAllCourses(1, 10)
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, len(courses), 1)
+		assert.GreaterOrEqual(t, total, 1)
+
+		// Test Search
+		searchedCourses, total, err := courseRepo.SearchCourses("Updated", 1, 10)
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, len(searchedCourses), 1)
+		assert.GreaterOrEqual(t, total, 1)
+
+		// Test Delete
+		err = courseRepo.DeleteCourse(course.ID)
+		require.NoError(t, err)
+
+		// Verify deletion
+		deletedCourse, err := courseRepo.GetCourseByID(course.ID)
+		assert.Error(t, err)
+		assert.Nil(t, deletedCourse)
+	})
+
+	t.Run("Job CRUD Operations", func(t *testing.T) {
+		// Create a job using the correct type
+		job := &models.ProcessingJobDB{
+			ID:        uuid.New().String(),
+			Type:      "course_generation",
+			Status:    "pending",
+			UserID:    "test-user",
+			CreatedAt: time.Now(),
+		}
+
+		// Test Create
+		createdJob, err := jobRepo.CreateJob(job)
+		require.NoError(t, err)
+		assert.Equal(t, job.ID, createdJob.ID)
+		assert.Equal(t, "pending", createdJob.Status)
+
+		// Test Get by ID
+		retrievedJob, err := jobRepo.GetJobByID(job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, job.ID, retrievedJob.ID)
+
+		// Test Update Status
+		updatedJob, err := jobRepo.UpdateJobStatus(job.ID, "processing")
+		require.NoError(t, err)
+		assert.Equal(t, "processing", updatedJob.Status)
+
+		// Test Update Progress
+		updatedJob, err = jobRepo.UpdateJobProgress(job.ID, 50)
+		require.NoError(t, err)
+		assert.Equal(t, 50, updatedJob.Progress)
+
+		// Test Get All Jobs
+		jobs, total, err := jobRepo.GetAllJobs(1, 10)
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, len(jobs), 1)
+		assert.GreaterOrEqual(t, total, 1)
+
+		// Test Get Jobs by Status
+		processingJobs, total, err := jobRepo.GetJobsByStatus("processing", 1, 10)
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, len(processingJobs), 1)
+		assert.GreaterOrEqual(t, total, 1)
+
+		// Test Get Pending Jobs
+		pendingJobs, err := jobRepo.GetPendingJobs()
+		require.NoError(t, err)
+		// Our job is now "processing", not "pending"
+		assert.Equal(t, 0, len(pendingJobs))
+
+		// Test Delete
+		deleted, err := jobRepo.DeleteJob(job.ID)
+		require.NoError(t, err)
+		assert.True(t, deleted)
+
+		// Verify deletion
+		deletedJob, err := jobRepo.GetJobByID(job.ID)
+		assert.Error(t, err)
+		assert.Nil(t, deletedJob)
+	})
+
+	t.Run("Database Connection Health", func(t *testing.T) {
+		// Test Ping
+		err := db.Ping()
+		assert.NoError(t, err)
+
+		// Test Close (already deferred)
+		assert.NotNil(t, db.GetGormDB())
+	})
+}
