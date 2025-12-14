@@ -18,9 +18,9 @@ type CourseDB struct {
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
 	// Relations
-	User     *UserDB          `gorm:"constraint:OnDelete:CASCADE" json:"user,omitempty"`
-	Lessons  []LessonDB       `gorm:"foreignKey:CourseID;constraint:OnDelete:CASCADE" json:"lessons,omitempty"`
-	Metadata CourseMetadataDB `gorm:"foreignKey:CourseID;constraint:OnDelete:CASCADE" json:"metadata,omitempty"`
+	User     *UserDB           `gorm:"constraint:OnDelete:CASCADE" json:"user,omitempty"`
+	Lessons  []LessonDB        `gorm:"foreignKey:CourseID;constraint:OnDelete:CASCADE" json:"lessons,omitempty"`
+	Metadata *CourseMetadataDB `gorm:"foreignKey:CourseID;constraint:OnDelete:CASCADE" json:"metadata,omitempty"`
 }
 
 // CourseMetadataDB represents the database model for CourseMetadata

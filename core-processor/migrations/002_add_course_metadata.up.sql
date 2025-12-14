@@ -5,16 +5,17 @@
 CREATE TABLE IF NOT EXISTS course_metadata (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    key VARCHAR(255) NOT NULL,
-    value TEXT,
+    author VARCHAR(255),
+    language VARCHAR(10),
+    tags TEXT, -- JSON string
+    thumbnail_url VARCHAR(500),
+    total_duration INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(course_id, key)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_course_metadata_course_id ON course_metadata(course_id);
-CREATE INDEX IF NOT EXISTS idx_course_metadata_key ON course_metadata(key);
 
 -- Trigger to update updated_at timestamp
 CREATE TRIGGER update_course_metadata_updated_at BEFORE UPDATE ON course_metadata

@@ -9,6 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const baseURL = "http://localhost:8080"
+
 // Mock course data
 type Course struct {
 	ID          string `json:"id"`

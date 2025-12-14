@@ -6,7 +6,6 @@ import (
 )
 
 func TestEndpoints(t *testing.T) {
-	const baseURL = "http://localhost:8080"
 
 	endpoints := []string{
 		"/api/v1/health",

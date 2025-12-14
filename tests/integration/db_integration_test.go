@@ -9,11 +9,9 @@ import (
 )
 
 func TestDatabaseIntegration(t *testing.T) {
-	const baseURL = "http://localhost:8080/api/v1"
-
 	// Test health endpoint
 	t.Run("Health Check", func(t *testing.T) {
-		resp, err := http.Get(baseURL + "/health")
+		resp, err := http.Get(baseURL + "/api/v1/health")
 		if err != nil {
 			t.Fatalf("Health check failed: %v", err)
 		}
@@ -38,7 +36,7 @@ func TestDatabaseIntegration(t *testing.T) {
 		}
 
 		reqBody, _ := json.Marshal(generateReq)
-		resp, err := http.Post(baseURL+"/courses/generate", "application/json", bytes.NewBuffer(reqBody))
+		resp, err := http.Post(baseURL+"/api/v1/courses/generate", "application/json", bytes.NewBuffer(reqBody))
 		if err != nil {
 			t.Fatalf("Course generation failed: %v", err)
 		}
@@ -61,7 +59,7 @@ func TestDatabaseIntegration(t *testing.T) {
 		// Test job status
 		t.Run("Job Status", func(t *testing.T) {
 			time.Sleep(1 * time.Second) // Give some time for processing
-			resp, err := http.Get(baseURL + "/jobs/" + jobID)
+			resp, err := http.Get(baseURL + "/api/v1/jobs/" + jobID)
 			if err != nil {
 				t.Fatalf("Job status check failed: %v", err)
 			}
@@ -80,7 +78,7 @@ func TestDatabaseIntegration(t *testing.T) {
 
 	// Test courses list
 	t.Run("Courses List", func(t *testing.T) {
-		resp, err := http.Get(baseURL + "/courses")
+		resp, err := http.Get(baseURL + "/api/v1/courses")
 		if err != nil {
 			t.Fatalf("Courses list failed: %v", err)
 		}
@@ -99,7 +97,7 @@ func TestDatabaseIntegration(t *testing.T) {
 
 	// Test jobs list
 	t.Run("Jobs List", func(t *testing.T) {
-		resp, err := http.Get(baseURL + "/jobs")
+		resp, err := http.Get(baseURL + "/api/v1/jobs")
 		if err != nil {
 			t.Fatalf("Jobs list failed: %v", err)
 		}

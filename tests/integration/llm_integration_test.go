@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-const baseURL = "http://localhost:8080"
-
 func TestLLMIntegration(t *testing.T) {
 	// Test health endpoint
 	t.Run("Health Check", func(t *testing.T) {

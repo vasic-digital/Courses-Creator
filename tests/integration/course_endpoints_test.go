@@ -6,7 +6,6 @@ import (
 )
 
 func TestCourseEndpoints(t *testing.T) {
-	const baseURL = "http://localhost:8080"
 
 	endpoints := []string{
 		"/courses/generate",

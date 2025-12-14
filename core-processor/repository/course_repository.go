@@ -61,7 +61,7 @@ func (r *CourseRepository) CreateCourse(course *models.Course) (*models.CourseDB
 			tx.Rollback()
 			return nil, fmt.Errorf("failed to create course metadata: %w", err)
 		}
-		courseDB.Metadata = *metadataDB
+		courseDB.Metadata = metadataDB
 	}
 
 	// Create lessons

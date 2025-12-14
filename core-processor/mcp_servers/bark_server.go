@@ -404,9 +404,13 @@ import sys
 import traceback
 
 try:
+    import torch
     from bark import SAMPLE_RATE, generate_audio, preload_models
     from scipy.io.wavfile import write as write_wav
     import numpy as np
+
+    # Allow numpy.core.multiarray.scalar for torch.load
+    torch.serialization.add_safe_globals([np.core.multiarray.scalar])
 
     # Load models (only text-to-speech models for efficiency)
     preload_models(text_use_gpu=True, coarse_use_gpu=True, fine_use_gpu=True)
