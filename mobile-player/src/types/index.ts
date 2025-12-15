@@ -33,7 +33,7 @@ export interface Timestamp {
 
 export interface InteractiveElement {
   id: string;
-  type: 'code' | 'quiz' | 'exercise';
+  type: "code" | "quiz" | "exercise";
   content: string;
   position: number;
 }

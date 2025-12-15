@@ -3,7 +3,7 @@ export interface ProcessingOptions {
   voice?: string;
   backgroundMusic: boolean;
   languages: string[];
-  quality: 'standard' | 'high';
+  quality: "standard" | "high";
 }
 
 export interface CourseGenerationRequest {

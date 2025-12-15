@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-} from 'react-native';
-import { Course } from '../types';
-import { CourseService } from '../services/CourseService';
+} from "react-native";
+import { Course } from "../types";
+import { CourseService } from "../services/CourseService";
 
 interface CourseListScreenProps {
   navigation: any;
@@ -27,7 +27,7 @@ const CourseListScreen: React.FC<CourseListScreenProps> = ({ navigation }) => {
       const courseList = await CourseService.getCourses();
       setCourses(courseList);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load courses');
+      Alert.alert("Error", "Failed to load courses");
     } finally {
       setLoading(false);
     }
@@ -36,7 +36,7 @@ const CourseListScreen: React.FC<CourseListScreenProps> = ({ navigation }) => {
   const renderCourse = ({ item }: { item: Course }) => (
     <TouchableOpacity
       style={styles.courseItem}
-      onPress={() => navigation.navigate('CoursePlayer', { course: item })}
+      onPress={() => navigation.navigate("CoursePlayer", { course: item })}
     >
       <Text style={styles.courseTitle}>{item.title}</Text>
       <Text style={styles.courseDescription}>{item.description}</Text>
@@ -70,29 +70,29 @@ const CourseListScreen: React.FC<CourseListScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   center: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     marginVertical: 20,
-    color: '#333',
+    color: "#333",
   },
   list: {
     padding: 16,
   },
   courseItem: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 16,
     marginBottom: 12,
     borderRadius: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -100,18 +100,18 @@ const styles = StyleSheet.create({
   },
   courseTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 8,
   },
   courseDescription: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 8,
   },
   courseMeta: {
     fontSize: 12,
-    color: '#999',
+    color: "#999",
   },
 });
 

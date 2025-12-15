@@ -1,8 +1,8 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import CourseListScreen from './src/screens/CourseListScreen';
-import CoursePlayerScreen from './src/screens/CoursePlayerScreen';
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import CourseListScreen from "./src/screens/CourseListScreen";
+import CoursePlayerScreen from "./src/screens/CoursePlayerScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -13,12 +13,12 @@ const App: React.FC = () => {
         <Stack.Screen
           name="CourseList"
           component={CourseListScreen}
-          options={{ title: 'Course Creator Player' }}
+          options={{ title: "Course Creator Player" }}
         />
         <Stack.Screen
           name="CoursePlayer"
           component={CoursePlayerScreen}
-          options={{ title: 'Course Player' }}
+          options={{ title: "Course Player" }}
         />
       </Stack.Navigator>
     </NavigationContainer>
