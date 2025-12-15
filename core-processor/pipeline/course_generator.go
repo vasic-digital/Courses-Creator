@@ -406,9 +406,10 @@ func (cg *CourseGenerator) createCourseManifest(course *models.Course, outputDir
 		},
 	}
 
-	// Check for assets
+	// Check for assets and calculate total duration
 	var totalDurationSeconds int
 	for _, lesson := range course.Lessons {
+		// Check for assets
 		if lesson.VideoURL != nil {
 			manifest["assets"].(map[string]interface{})["hasVideo"] = true
 		}
@@ -420,22 +421,8 @@ func (cg *CourseGenerator) createCourseManifest(course *models.Course, outputDir
 		}
 
 		// Calculate total duration from lesson durations in seconds
-		var totalDurationSeconds int
-		for _, lesson := range course.Lessons {
-			if lesson.Duration > 0 {
-				totalDurationSeconds += lesson.Duration
-			}
-
-			// Check for assets
-			if lesson.VideoURL != nil {
-				manifest["assets"].(map[string]interface{})["hasVideo"] = true
-			}
-			if lesson.AudioURL != nil {
-				manifest["assets"].(map[string]interface{})["hasAudio"] = true
-			}
-			if len(lesson.Diagrams) > 0 {
-				manifest["assets"].(map[string]interface{})["hasDiagrams"] = true
-			}
+		if lesson.Duration > 0 {
+			totalDurationSeconds += lesson.Duration
 		}
 	}
 
