@@ -1,8 +1,8 @@
 import React from 'react';
 import styled from 'styled-components';
 import { Link, useLocation } from 'react-router-dom';
-import { useMediaQuery } from '@/hooks';
-import { theme } from '@/styles/theme';
+import { useMediaQuery } from '../hooks';
+import { theme } from '../styles/theme';
 
 const HeaderContainer = styled.header`
   background-color: ${props => props.theme.colors.background.secondary};

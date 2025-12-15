@@ -2,7 +2,7 @@
 export { api, handleApiError, authService, courseService, jobService } from './api';
 
 // Import Course and Job types for service
-import { Course, Job } from '@/types';
+import { Course, Job } from '../types';
 
 // Create a service object that matches what the components expect
 export const apiService = {

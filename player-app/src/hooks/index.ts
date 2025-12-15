@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UseApiResult } from '@/types';
-import { api, handleApiError } from '@/services/api';
+import { UseApiResult } from '../types';
+import { api, handleApiError } from '../services/api';
 
 // Generic API hook
 export const useApi = <T>(

@@ -4,14 +4,14 @@ import styled from 'styled-components';
 import { Helmet } from 'react-helmet-async';
 
 // Pages
-const CourseListPage = React.lazy(() => import('@/pages/CourseListPage'));
-const CoursePlayerPage = React.lazy(() => import('@/pages/CoursePlayerPage'));
-const NotFoundPage = React.lazy(() => import('@/pages/NotFoundPage'));
+const CourseListPage = React.lazy(() => import('./pages/CourseListPage'));
+const CoursePlayerPage = React.lazy(() => import('./pages/CoursePlayerPage'));
+const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'));
 
 // Components
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import LoadingSpinner from './components/LoadingSpinner';
 
 const AppContainer = styled.div`
   min-height: 100vh;

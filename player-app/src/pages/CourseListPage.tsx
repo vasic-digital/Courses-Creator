@@ -4,9 +4,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Helmet from 'react-helmet-async';
 
-import { apiService } from '@/services';
-import { Course, Lesson } from '@/types';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import { apiService } from '../services';
+import { Course, Lesson } from '../types';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const PageContainer = styled.div`
   padding: ${props => props.theme.spacing.lg};

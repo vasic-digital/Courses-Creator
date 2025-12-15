@@ -5,9 +5,9 @@ import { useQuery } from '@tanstack/react-query';
 import Helmet from 'react-helmet-async';
 import ReactPlayer from 'react-player';
 
-import { apiService } from '@/services';
-import { Course, Lesson } from '@/types';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import { apiService } from '../services';
+import { Course, Lesson } from '../types';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const PageContainer = styled.div`
   padding: ${props => props.theme.spacing.lg};

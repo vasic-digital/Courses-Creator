@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { theme } from '@/styles/theme';
+import { theme } from '../styles/theme';
 
 const FooterContainer = styled.footer`
   background-color: ${props => props.theme.colors.background.secondary};

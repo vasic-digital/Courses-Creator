@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import { ApiResponse, ErrorResponse, PaginatedResponse } from '@/types';
-import { Course, Job } from '@/types';
+import { ApiResponse, ErrorResponse, PaginatedResponse } from '../types';
+import { Course, Job } from '../types';
 
 // API configuration
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
