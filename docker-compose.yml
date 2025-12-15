@@ -98,16 +98,15 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "80:80"
-      - "443:443"
+       - "80:80"
+       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/ssl:/etc/nginx/ssl
+       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+       - ./nginx/ssl:/etc/nginx/ssl
     depends_on:
-      - api
-      - web-player
+       - api
     profiles:
-      - production
+       - production
 
   # Monitoring with Prometheus
   prometheus:
