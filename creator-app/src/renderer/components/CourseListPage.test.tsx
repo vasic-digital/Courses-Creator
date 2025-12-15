@@ -58,9 +58,9 @@ describe('CourseListPage', () => {
       expect(screen.getByText('Course Library')).toBeInTheDocument();
       expect(screen.getByText('Test Course 1')).toBeInTheDocument();
       expect(screen.getByText('Test Course 2')).toBeInTheDocument();
-      expect(screen.getByText('Author: Author 1')).toBeInTheDocument();
-      expect(screen.getByText('Language: en')).toBeInTheDocument();
-      expect(screen.getByText('Duration: 2m 0s')).toBeInTheDocument();
+      expect(screen.getByText('Author 1')).toBeInTheDocument();
+      expect(screen.getByText('en')).toBeInTheDocument();
+      expect(screen.getByText('2m 0s')).toBeInTheDocument();
     });
   });
 
@@ -91,7 +91,8 @@ describe('CourseListPage', () => {
 
   it('renders error state on API failure', async () => {
     const { publicAPI } = require('../services/api');
-    publicAPI.getCourses.mockRejectedValue(new Error('API Error'));
+    const error = { response: { data: { error: 'API Error' } } };
+    publicAPI.getCourses.mockRejectedValue(error);
 
     render(<CourseListPage isAuthenticated={false} />);
 
@@ -107,7 +108,7 @@ describe('CourseListPage', () => {
     render(<CourseListPage isAuthenticated={false} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Created: 1/1/2023')).toBeInTheDocument();
+      expect(screen.getByText('1/1/2023')).toBeInTheDocument();
     });
   });
 });

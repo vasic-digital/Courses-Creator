@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { Helmet } from 'react-helmet-async';
 
 // Pages
-import CourseListPage from '@/pages/CourseListPage';
-import CoursePlayerPage from '@/pages/CoursePlayerPage';
-import NotFoundPage from '@/pages/NotFoundPage';
+const CourseListPage = React.lazy(() => import('@/pages/CourseListPage'));
+const CoursePlayerPage = React.lazy(() => import('@/pages/CoursePlayerPage'));
+const NotFoundPage = React.lazy(() => import('@/pages/NotFoundPage'));
 
 // Components
 import Header from '@/components/Header';
@@ -36,15 +36,17 @@ const App: React.FC = () => {
       
       <Header />
       
-      <MainContent>
-        <Routes>
-          <Route path="/" element={<Navigate to="/courses" replace />} />
-          <Route path="/courses" element={<CourseListPage />} />
-          <Route path="/courses/:courseId" element={<CoursePlayerPage />} />
-          <Route path="/courses/:courseId/:lessonId" element={<CoursePlayerPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </MainContent>
+       <MainContent>
+         <Suspense fallback={<LoadingSpinner />}>
+           <Routes>
+             <Route path="/" element={<Navigate to="/courses" replace />} />
+             <Route path="/courses" element={<CourseListPage />} />
+             <Route path="/courses/:courseId" element={<CoursePlayerPage />} />
+             <Route path="/courses/:courseId/:lessonId" element={<CoursePlayerPage />} />
+             <Route path="*" element={<NotFoundPage />} />
+           </Routes>
+         </Suspense>
+       </MainContent>
       
       <Footer />
     </AppContainer>

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { authAPI } from "./services/api";
 import LoginPage from "./components/LoginPage";
-import CourseListPage from "./components/CourseListPage";
+const CourseListPage = React.lazy(() => import("./components/CourseListPage"));
 import "./App.css";
 
 interface ProcessingOptions {
@@ -154,10 +154,11 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      <main className="main-content">
-        {currentPage === "courses" ? (
-          <CourseListPage isAuthenticated={isAuthenticated} />
-        ) : (
+       <main className="main-content">
+         <Suspense fallback={<div>Loading...</div>}>
+           {currentPage === "courses" ? (
+             <CourseListPage isAuthenticated={isAuthenticated} />
+           ) : (
           <div className="creator-container">
             <h1>Create New Course</h1>
 
@@ -268,10 +269,11 @@ const App: React.FC = () => {
                 </strong>{" "}
                 {result.message}
               </div>
-            )}
-          </div>
-        )}
-      </main>
+             )}
+           </div>
+         )}
+         </Suspense>
+       </main>
     </div>
   );
 };
